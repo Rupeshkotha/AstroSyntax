@@ -8,6 +8,7 @@ import AdminLogin from './pages/AdminLogin';
 import Profile from './pages/Profile';
 import Dashboard from './pages/Dashboard';
 import Teams from './pages/Teams';
+import IdeaGenerator from './pages/IdeaGenerator';
 import Hackathons from './pages/Hackathons';
 import AdminHackathons from './pages/AdminHackathons';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -93,6 +94,17 @@ const App: React.FC = () => {
             </ProtectedRoute>
           }
         />
+
+        <Route
+          path="/ideagenerator"
+          element={
+            <ProtectedRoute>
+              <Navbar />
+              <IdeaGenerator />
+            </ProtectedRoute>
+          }
+        />
+
         <Route
           path="/hackathons"
           element={
