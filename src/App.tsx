@@ -14,6 +14,8 @@ import AdminHackathons from './pages/AdminHackathons';
 import ProtectedRoute from './components/ProtectedRoute';
 import DashboardLayout from './components/layout/DashboardLayout';
 import Resources from './pages/Resources';
+import CommunityHub from './components/community/CommunityHub';
+import WriteBlog from './components/community/WriteBlog';
 import './App.css';
 
 const App: React.FC = () => {
@@ -58,7 +60,7 @@ const App: React.FC = () => {
           }
         />
 
-        {/* Protected Routes */}
+        {/* Protected Routes with Navbar */}
         <Route
           path="/profile"
           element={
@@ -74,14 +76,6 @@ const App: React.FC = () => {
             <ProtectedRoute>
               <Navbar />
               <Profile />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/dashboard/*"
-          element={
-            <ProtectedRoute>
-              <Dashboard />
             </ProtectedRoute>
           }
         />
@@ -123,10 +117,38 @@ const App: React.FC = () => {
             </ProtectedRoute>
           }
         />
-
+        
+        {/* Protected Dashboard Routes with Sidebar */}
+        <Route
+          path="/dashboard/*"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/" element={<DashboardLayout><Outlet /></DashboardLayout>}>
           <Route path="/dashboard/resources" element={<Resources />} />
         </Route>
+
+        {/* Protected Community Routes (without DashboardLayout) */}
+        <Route
+          path="/dashboard/community"
+          element={
+            <ProtectedRoute>
+              <CommunityHub />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/community/write"
+          element={
+            <ProtectedRoute>
+              <WriteBlog />
+            </ProtectedRoute>
+          }
+        />
+
       </Routes>
     </Router>
   );

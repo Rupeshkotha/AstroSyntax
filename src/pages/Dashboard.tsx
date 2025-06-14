@@ -9,6 +9,7 @@ import {
   CalendarIcon,
   BookOpenIcon,
   BellIcon,
+  ChatBubbleLeftRightIcon,
 } from '@heroicons/react/24/outline';
 import IncomingRequests from '../components/IncomingRequests';
 import { Link } from 'react-router-dom';
@@ -177,7 +178,51 @@ const Dashboard: React.FC = () => {
 
         {/* Right Column - This column will be empty after removals, consider adjusting grid layout if no other content is intended */}
         <div className="space-y-8">
-          {/* Placeholder for future content or remove if not needed */}
+          {/* AI Idea Generator */}
+          <div className="card glass border border-white/10">
+            <div className="p-6">
+              <h2 className="text-xl font-semibold text-text mb-4">AI Idea Generator</h2>
+              <p className="text-text-secondary mb-6">Get AI-powered hackathon project ideas tailored to your skills and interests.</p>
+              <button className="btn btn-primary">
+                <LightBulbIcon className="w-5 h-5 mr-2" />
+                Generate Ideas
+              </button>
+            </div>
+          </div>
+
+          {/* Upcoming Hackathons */}
+          <div className="card glass border border-white/10">
+            <div className="p-6">
+              <h2 className="text-xl font-semibold text-text mb-4">Upcoming Hackathons</h2>
+              <div className="text-center py-8">
+                <p className="text-text-secondary mb-4">No upcoming hackathons</p>
+                <Link to="/hackathons" className="btn btn-primary">
+                  Browse Hackathons
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Resources */}
+          <div className="card glass border border-white/10">
+            <div className="p-6">
+              <h2 className="text-xl font-semibold text-text mb-4">Quick Resources</h2>
+              <div className="space-y-4">
+                <a href="#" className="flex items-center p-3 rounded-lg hover:bg-white/5 transition-colors">
+                  <BookOpenIcon className="w-5 h-5 text-text-secondary mr-3" />
+                  <span className="text-text">Hackathon Preparation Guide</span>
+                </a>
+                <a href="#" className="flex items-center p-3 rounded-lg hover:bg-white/5 transition-colors">
+                  <BookOpenIcon className="w-5 h-5 text-text-secondary mr-3" />
+                  <span className="text-text">Team Formation Tips</span>
+                </a>
+                <a href="#" className="flex items-center p-3 rounded-lg hover:bg-white/5 transition-colors">
+                  <BookOpenIcon className="w-5 h-5 text-text-secondary mr-3" />
+                  <span className="text-text">Project Presentation Templates</span>
+                </a>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

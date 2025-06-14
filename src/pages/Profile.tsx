@@ -16,10 +16,9 @@ import {
   LinkIcon,
   PencilIcon,
   XMarkIcon,
-  PhotoIcon,
   CameraIcon,
   TrashIcon,
-  TrophyIcon,
+  DocumentTextIcon,
 } from '@heroicons/react/24/outline';
 
 // Initialize Cloudinary
@@ -122,6 +121,105 @@ interface Hackathon {
   placement?: string;
   prize?: string;
 }
+
+interface Particle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  size: number;
+}
+
+interface GlowingCardProps {
+  children: React.ReactNode;
+  className?: string;
+  delay?: number;
+}
+
+interface SkillBadgeProps {
+  skill: Skill;
+  index: number;
+}
+
+interface ExperienceCardProps {
+  experience: Experience;
+  index: number;
+}
+
+const GlowingCard: React.FC<GlowingCardProps> = ({ children, className = '', delay = 0 }) => (
+  <div 
+    className={`relative group transform transition-all duration-700 hover:scale-[1.02] ${className}`}
+    style={{ animationDelay: `${delay}ms` }}
+  >
+    <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-500/50 via-pink-500/50 to-blue-500/50 rounded-2xl blur opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200"></div>
+    <div className="relative bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
+      {children}
+    </div>
+  </div>
+);
+
+const SkillBadge: React.FC<SkillBadgeProps> = ({ skill, index }) => {
+  const proficiencyColors: Record<string, string> = {
+    beginner: 'from-emerald-400 to-blue-500',
+    intermediate: 'from-blue-400 to-indigo-500',
+    advanced: 'from-indigo-400 to-purple-500',
+    expert: 'from-purple-400 to-pink-500'
+  };
+
+  const proficiencyWidth: Record<string, string> = {
+    beginner: 'w-1/4',
+    intermediate: 'w-1/2',
+    advanced: 'w-3/4',
+    expert: 'w-full'
+  };
+
+  return (
+    <div className="relative group bg-slate-800/30 backdrop-blur-sm rounded-xl p-4 border border-white/10 hover:border-purple-500/30 transition-all duration-300">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-white font-medium">{skill.name}</span>
+        <span className="text-sm text-gray-400 capitalize">{skill.proficiency}</span>
+      </div>
+      <div className="w-full bg-slate-700/30 rounded-full h-2 overflow-hidden">
+        <div 
+          className={`h-full bg-gradient-to-r ${proficiencyColors[skill.proficiency]} ${proficiencyWidth[skill.proficiency]} rounded-full transition-all duration-1000 group-hover:animate-pulse`}
+        ></div>
+      </div>
+      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -skew-x-12 translate-x-[-100%] group-hover:translate-x-[200%] transition-transform duration-1000"></div>
+    </div>
+  );
+};
+
+const ExperienceCard: React.FC<ExperienceCardProps> = ({ experience, index }) => (
+  <div 
+    className="relative group"
+    style={{ animationDelay: `${index * 200}ms` }}
+  >
+    <div className="absolute -inset-0.5 bg-gradient-to-r from-emerald-500/50 via-blue-500/50 to-purple-500/50 rounded-xl blur opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200"></div>
+    <div className="relative bg-slate-800/30 backdrop-blur-sm rounded-xl p-6 border border-white/10 hover:border-emerald-500/30 transition-all duration-300">
+      <div className="flex items-start justify-between">
+        <div>
+          <h3 className="text-xl font-semibold text-white">{experience.title}</h3>
+          <p className="text-lg text-gray-300">{experience.company}</p>
+          <p className="text-sm text-gray-400">
+            {new Date(experience.startDate).toLocaleDateString()} - {new Date(experience.endDate).toLocaleDateString()}
+          </p>
+        </div>
+      </div>
+      <p className="mt-4 text-gray-300 leading-relaxed">{experience.description}</p>
+      
+      <div className="flex flex-wrap gap-2 mt-4">
+        {experience.technologies.map((tech: string, techIndex: number) => (
+          <span 
+            key={techIndex}
+            className="px-3 py-1 bg-gradient-to-r from-blue-500/10 to-purple-500/10 text-blue-300 rounded-full text-sm border border-blue-500/20 hover:from-blue-500/20 hover:to-purple-500/20 transition-all duration-300"
+          >
+            {tech}
+          </span>
+        ))}
+      </div>
+    </div>
+  </div>
+);
 
 const Profile: React.FC = () => {
   const { currentUser } = useAuth();
@@ -371,12 +469,82 @@ const Profile: React.FC = () => {
     }
   };
 
+  const FloatingParticles = () => {
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+
+    useEffect(() => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      const particles: Particle[] = [];
+      
+      const resizeCanvas = () => {
+        if (!canvas) return;
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      };
+      
+      resizeCanvas();
+      window.addEventListener('resize', resizeCanvas);
+
+      for (let i = 0; i < 50; i++) {
+        particles.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          vx: (Math.random() - 0.5) * 0.5,
+          vy: (Math.random() - 0.5) * 0.5,
+          size: Math.random() * 2 + 1
+        });
+      }
+
+      const animate = () => {
+        if (!canvas || !ctx) return;
+        
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        particles.forEach(particle => {
+          particle.x += particle.vx;
+          particle.y += particle.vy;
+          
+          if (particle.x < 0) particle.x = canvas.width;
+          if (particle.x > canvas.width) particle.x = 0;
+          if (particle.y < 0) particle.y = canvas.height;
+          if (particle.y > canvas.height) particle.y = 0;
+          
+          ctx.beginPath();
+          ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+          ctx.fill();
+        });
+        
+        requestAnimationFrame(animate);
+      };
+
+      animate();
+
+      return () => {
+        window.removeEventListener('resize', resizeCanvas);
+      };
+    }, []);
+
+    return (
+      <canvas
+        ref={canvasRef}
+        className="absolute inset-0 z-0 opacity-30"
+        style={{ background: 'transparent' }}
+      ></canvas>
+    );
+  };
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen bg-gray-900">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading profile...</p>
+          <p className="mt-4 text-gray-400">Loading profile...</p>
         </div>
       </div>
     );
@@ -384,12 +552,12 @@ const Profile: React.FC = () => {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen bg-gray-900">
         <div className="text-center">
-          <p className="text-red-500">{error}</p>
+          <p className="text-red-500 mb-4">{error}</p>
           <button
             onClick={() => window.location.reload()}
-            className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
             Retry
           </button>
@@ -399,181 +567,184 @@ const Profile: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 py-12">
-      {/* Edit Profile Modal */}
-      {isEditing && !userId && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-gray-900/95 backdrop-blur-sm border-b border-gray-700 px-6 py-4 flex justify-between items-center rounded-t-2xl">
-              <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">Edit Profile</h2>
-              <button
-                onClick={() => setIsEditing(false)}
-                className="text-gray-400 hover:text-white transition-colors"
-              >
-                ✕
-              </button>
-            </div>
-            <EditProfileForm
-              initialData={profileData}
-              onSave={handleSave}
-              onCancel={() => setIsEditing(false)}
-            />
-          </div>
-        </div>
-      )}
+    <div className="min-h-screen bg-slate-950 overflow-hidden">
+      {/* Animated Background Elements */}
+      <div className="absolute inset-0 z-0">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-500/20 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob animation-delay-2000"></div>
+        <div className="absolute top-1/2 right-1/4 w-80 h-80 bg-pink-500/20 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob animation-delay-4000"></div>
+        <div className="absolute bottom-1/4 left-1/3 w-72 h-72 bg-blue-500/20 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob"></div>
+        <div className="absolute top-3/4 right-1/2 w-64 h-64 bg-green-500/15 rounded-full mix-blend-multiply filter blur-3xl opacity-60 animate-blob animation-delay-6000"></div>
+      </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* Floating Elements */}
+      <div className="absolute inset-0 z-0">
+        {[...Array(20)].map((_, i) => (
+          <div
+            key={i}
+            className="absolute w-2 h-2 bg-white/20 rounded-full animate-float"
+            style={{
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              animationDelay: `${Math.random() * 5}s`,
+              animationDuration: `${3 + Math.random() * 4}s`
+            }}
+          />
+        ))}
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-12 relative z-10">
         {/* Profile Header */}
-        <div className="relative w-full h-48 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg shadow-md mb-20 group overflow-hidden">
-          {profileData.coverPhoto ? (
-            <img
-              src={profileData.coverPhoto}
-              alt="Cover Photo"
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-white text-lg font-semibold">No Cover Photo</div>
-          )}
-          {isEditing && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-white">
-              <label
-                htmlFor="cover-upload"
-                className="flex items-center justify-center cursor-pointer px-4 py-2 bg-white/10 backdrop-blur-sm rounded-lg text-white text-sm font-medium hover:bg-white/20 transition-colors mb-2"
-              >
-                <CameraIcon className="w-5 h-5 mr-2" />
-                Upload Cover Photo
-                <input
-                  id="cover-upload"
-                  type="file"
-                  ref={coverImageInputRef}
-                  className="hidden"
-                  accept="image/*"
-                  onChange={(e) => handleImageUpload(e, 'cover')}
-                  disabled={uploadingImage}
-                />
-              </label>
-              
-              {profileData.coverPhoto && (
-                <button
-                  type="button"
-                  onClick={() => handleDeleteImage('cover')}
-                  className="flex items-center justify-center px-4 py-2 bg-red-500/20 backdrop-blur-sm rounded-lg text-white text-sm font-medium hover:bg-red-500/40 transition-colors"
-                  disabled={uploadingImage}
-                >
-                  <TrashIcon className="w-5 h-5 mr-2" />
-                  Delete Cover Photo
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-
-        <div className="relative w-32 h-32 rounded-full border-4 border-white shadow-lg bg-gray-300 absolute top-32 left-1/2 transform -translate-x-1/2 overflow-hidden flex items-center justify-center group">
-          {profileData.profilePicture ? (
-            <img
-              src={profileData.profilePicture}
-              alt="Profile"
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <UserCircleIcon className="w-24 h-24 text-gray-500" />
-          )}
-          
-          {isEditing && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-white">
-              <label
-                htmlFor="profile-upload"
-                className="flex items-center justify-center cursor-pointer px-3 py-1 bg-white/10 backdrop-blur-sm rounded-lg text-white text-xs font-medium hover:bg-white/20 transition-colors mb-2"
-              >
-                <CameraIcon className="w-4 h-4 mr-1" />
-                Change
-                <input
-                  id="profile-upload"
-                  type="file"
-                  ref={profileImageInputRef}
-                  className="hidden"
-                  accept="image/*"
-                  onChange={(e) => handleImageUpload(e, 'profile')}
-                  disabled={uploadingImage}
-                />
-              </label>
-              
-              {profileData.profilePicture && (
-                <button
-                  type="button"
-                  onClick={() => handleDeleteImage('profile')}
-                  className="flex items-center justify-center px-3 py-1 bg-red-500/20 backdrop-blur-sm rounded-lg text-white text-xs font-medium hover:bg-red-500/40 transition-colors"
-                  disabled={uploadingImage}
-                >
-                  <TrashIcon className="w-4 h-4 mr-1" />
-                  Delete
-                </button>
-              )}
-            </div>
-          )}
-          {isEditing && (
-            <label
-              htmlFor="profile-upload"
-              className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 cursor-pointer text-white"
-            >
-              <PhotoIcon className="w-8 h-8 mr-2" />
-              Upload Photo
-              <input
-                id="profile-upload"
-                type="file"
-                ref={profileImageInputRef}
-                className="hidden"
-                accept="image/*"
-                onChange={(e) => handleImageUpload(e, 'profile')}
-                disabled={uploadingImage}
+        <div className="relative bg-slate-800/50 backdrop-blur-sm rounded-2xl shadow-xl overflow-hidden animate-fadeInUp border border-white/10">
+          {/* Cover Photo Section */}
+          <div className="relative w-full h-48 md:h-64 lg:h-80 bg-gradient-to-r from-purple-600/50 to-pink-600/50 group">
+            {profileData.coverPhoto ? (
+              <img
+                src={profileData.coverPhoto}
+                alt="Cover Photo"
+                className="w-full h-full object-cover"
               />
-            </label>
-          )}
-        </div>
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-gray-300 text-lg font-light bg-gradient-to-r from-purple-600/30 to-pink-600/30">No Cover Photo</div>
+            )}
+            {/* Gradient Overlay */}
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent"></div>
+            {isEditing && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-white">
+                <label
+                  htmlFor="cover-upload"
+                  className="flex items-center justify-center cursor-pointer px-6 py-3 bg-white/10 backdrop-blur-sm rounded-xl text-white text-sm font-medium hover:bg-white/20 transition-colors mb-3"
+                >
+                  <CameraIcon className="w-5 h-5 mr-2" />
+                  Upload Cover Photo
+                  <input
+                    id="cover-upload"
+                    type="file"
+                    ref={coverImageInputRef}
+                    className="hidden"
+                    accept="image/*"
+                    onChange={(e) => handleImageUpload(e, 'cover')}
+                    disabled={uploadingImage}
+                  />
+                </label>
+                {profileData.coverPhoto && (
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteImage('cover')}
+                    className="flex items-center justify-center px-6 py-3 bg-red-500/20 backdrop-blur-sm rounded-xl text-white text-sm font-medium hover:bg-red-500/40 transition-colors"
+                    disabled={uploadingImage}
+                  >
+                    <TrashIcon className="w-5 h-5 mr-2" />
+                    Delete Cover Photo
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
 
-        <div className="text-center mt-6">
-          <div className="flex justify-between items-start">
-            <div>
-              <h1 className="text-3xl font-bold text-white">
-                {profileData.name || (isEditing ? 'Your Name' : null)}
-              </h1>
-              {(profileData.title || isEditing) && (
-                <p className="mt-1 text-gray-300">
-                  {profileData.title || (isEditing ? 'Add your title' : null)}
-                </p>
-              )}
-              {(profileData.location || isEditing) && (
-                <p className="text-gray-300">
-                  {profileData.location || (isEditing ? 'Add your location' : null)}
-                </p>
-              )}
-              {(profileData.timezone || isEditing) && (
-                <p className="text-gray-300">
-                  {profileData.timezone || (isEditing ? 'Add your timezone' : null)}
-                </p>
-              )}
+          {/* Main content area below cover photo */}
+          <div className="flex flex-col md:flex-row items-start justify-between px-8 py-6">
+            {/* Left side: Profile Picture and Info */}
+            <div className="flex flex-col items-start -mt-20 md:-mt-24 lg:-mt-32">
+              <div className="relative w-32 h-32 md:w-40 md:h-40 rounded-full border-4 border-slate-800 shadow-2xl bg-slate-800 overflow-hidden flex-shrink-0 flex items-center justify-center group">
+                {profileData.profilePicture ? (
+                  <img
+                    src={profileData.profilePicture}
+                    alt="Profile"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <UserCircleIcon className="w-full h-full text-gray-600" style={{ transform: 'scale(1.5)' }} />
+                )}
+                {isEditing && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-white">
+                    <label
+                      htmlFor="profile-upload"
+                      className="flex items-center justify-center cursor-pointer px-4 py-2 bg-white/10 backdrop-blur-sm rounded-lg text-white text-sm font-medium hover:bg-white/20 transition-colors mb-2"
+                    >
+                      <CameraIcon className="w-4 h-4 mr-2" />
+                      Change Photo
+                      <input
+                        id="profile-upload"
+                        type="file"
+                        ref={profileImageInputRef}
+                        className="hidden"
+                        accept="image/*"
+                        onChange={(e) => handleImageUpload(e, 'profile')}
+                        disabled={uploadingImage}
+                      />
+                    </label>
+                    {profileData.profilePicture && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteImage('profile')}
+                        className="flex items-center justify-center px-4 py-2 bg-red-500/20 backdrop-blur-sm rounded-lg text-white text-sm font-medium hover:bg-red-500/40 transition-colors"
+                        disabled={uploadingImage}
+                      >
+                        <TrashIcon className="w-4 h-4 mr-2" />
+                        Delete
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-4 text-left animate-fadeInUp delay-100">
+                <h1 className="text-3xl font-bold text-white mb-1">
+                  {profileData.name || (isEditing ? 'Your Name' : null)}
+                </h1>
+                {(profileData.title || isEditing) && (
+                  <p className="text-xl text-purple-400 font-medium mb-2">
+                    {profileData.title || (isEditing ? 'Add your title' : null)}
+                  </p>
+                )}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 text-gray-300 text-sm">
+                  {(profileData.location || isEditing) && (
+                    <div className="flex items-center animate-fadeInUp delay-200">
+                      <svg className="w-4 h-4 mr-1 text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      {profileData.location || (isEditing ? 'Add your location' : null)}
+                    </div>
+                  )}
+                  {(profileData.timezone || isEditing) && (
+                    <div className="flex items-center animate-fadeInUp delay-300">
+                      <svg className="w-4 h-4 mr-1 text-purple-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      {profileData.timezone || (isEditing ? 'Add your timezone' : null)}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
+
+            {/* Right side: Edit Profile Button */}
             {!userId && (
-              <button
-                onClick={() => setIsEditing(!isEditing)}
-                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-800 transition-colors duration-200"
-              >
-                <PencilIcon className="h-4 w-4 mr-2" />
-                {isEditing ? 'Done Editing' : 'Edit Profile'}
-              </button>
+              <div className="flex-shrink-0 mt-4 md:mt-0 animate-fadeInUp delay-400">
+                <button
+                  onClick={() => setIsEditing(!isEditing)}
+                  className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:from-purple-700 hover:to-pink-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-800 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+                >
+                  <PencilIcon className="h-5 w-5 mr-2" />
+                  {isEditing ? 'Done Editing' : 'Edit Profile'}
+                </button>
+              </div>
             )}
           </div>
         </div>
 
         {/* Profile Content */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-8">
           {/* Left Column */}
           <div className="md:col-span-2 space-y-8">
             {/* Bio */}
-            <div className="bg-gray-800/50 rounded-xl shadow-sm p-6 border border-gray-700">
-              <div className="flex items-center mb-4">
-                <UserCircleIcon className="h-6 w-6 text-blue-500 mr-3" />
-                <h2 className="text-xl font-semibold text-white">About</h2>
+            <GlowingCard className="animate-fadeInUp delay-500">
+              <div className="flex items-center mb-6">
+                <div className="p-2 bg-purple-500/10 rounded-xl">
+                  <UserCircleIcon className="h-6 w-6 text-purple-400" />
+                </div>
+                <h2 className="text-2xl font-semibold text-white ml-4">About</h2>
               </div>
               {isEditing ? (
                 <textarea
@@ -581,114 +752,96 @@ const Profile: React.FC = () => {
                   value={profileData.bio}
                   onChange={handleInputChange}
                   rows={4}
-                  className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-3 bg-slate-700/30 border border-slate-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors duration-200 hover:border-purple-500"
                   placeholder="Tell us about yourself"
                 />
               ) : (
                 profileData.bio ? (
-                  <p className="text-gray-300 whitespace-pre-wrap">
+                  <p className="text-gray-300 text-lg leading-relaxed whitespace-pre-wrap">
                     {profileData.bio}
                   </p>
                 ) : (
-                  <p className="text-gray-500">No bio provided.</p>
+                  <p className="text-gray-500 text-lg">No bio provided.</p>
                 )
               )}
-            </div>
+            </GlowingCard>
 
             {/* Skills */}
-            <div className="bg-gray-800/50 rounded-xl shadow-sm p-6 border border-gray-700">
-              <div className="flex items-center mb-4">
-                <CodeBracketIcon className="h-6 w-6 text-blue-500 mr-3" />
-                <h2 className="text-xl font-semibold text-white">Technical Skills</h2>
+            <GlowingCard className="animate-fadeInUp delay-600">
+              <div className="flex items-center mb-6">
+                <div className="p-2 bg-blue-500/10 rounded-xl">
+                  <CodeBracketIcon className="h-6 w-6 text-blue-400" />
+                </div>
+                <h2 className="text-2xl font-semibold text-white ml-4">Skills</h2>
               </div>
               {isEditing ? (
-                <div className="space-y-4">
-                  {profileData.technicalSkills.map((skill: Skill, index: number) => (
-                    <div key={index} className="relative">
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 relative">
-                          <input
-                            type="text"
-                            value={skillInputs[index] || skill.name}
-                            onChange={(e) => handleSkillInputChange(e, index)}
-                            className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white placeholder-gray-400"
-                            placeholder="Start typing a skill..."
-                          />
-                          {activeSkillIndex === index && skillSuggestions.length > 0 && (
-                            <div className="absolute z-10 w-full mt-1 bg-gray-700 border border-gray-600 rounded-md shadow-lg">
-                              {skillSuggestions.map((suggestion, i) => (
-                                <div
-                                  key={i}
-                                  className="px-4 py-2 text-gray-300 hover:bg-gray-600 cursor-pointer"
-                                  onClick={() => handleSkillSuggestionClick(suggestion)}
-                                >
-                                  {suggestion}
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                        <select
-                          value={skill.category}
-                          onChange={(e) => {
-                            const newSkills = [...profileData.technicalSkills];
-                            newSkills[index].category = e.target.value as Skill['category'];
-                            setProfileData((prev: UserProfileData) => ({ ...prev, technicalSkills: newSkills }));
-                          }}
-                          className="px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white"
-                        >
-                          <option value="frontend">Frontend</option>
-                          <option value="backend">Backend</option>
-                          <option value="ml">ML</option>
-                          <option value="design">Design</option>
-                          <option value="devops">DevOps</option>
-                          <option value="other">Other</option>
-                        </select>
-                        <select
-                          value={skill.proficiency}
-                          onChange={(e) => {
-                            const newSkills = [...profileData.technicalSkills];
-                            newSkills[index].proficiency = e.target.value as Skill['proficiency'];
-                            setProfileData((prev: UserProfileData) => ({ ...prev, technicalSkills: newSkills }));
-                          }}
-                          className="px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white"
-                        >
-                          <option value="beginner">Beginner</option>
-                          <option value="intermediate">Intermediate</option>
-                          <option value="advanced">Advanced</option>
-                          <option value="expert">Expert</option>
-                        </select>
+                <div className="space-y-6">
+                  {Object.entries(
+                    profileData.technicalSkills.reduce((acc: Record<string, Skill[]>, skill: Skill) => {
+                      if (!acc[skill.category]) acc[skill.category] = [];
+                      acc[skill.category].push(skill);
+                      return acc;
+                    }, {} as Record<string, Skill[]>)
+                  ).map(([category, skills]) => (
+                    <div key={category} className="space-y-4">
+                      <h3 className="text-lg font-medium text-gray-300 capitalize">{category}</h3>
+                      <div className="flex flex-wrap gap-3">
+                        {(skills as Skill[]).map((skill: Skill, index: number) => (
+                          <div
+                            key={index}
+                            className="group relative flex items-center px-4 py-2 bg-slate-700/30 border border-slate-600 rounded-xl focus-within:border-purple-500 transition-colors duration-200"
+                          >
+                            <input
+                              type="text"
+                              value={skillInputs[index] || skill.name}
+                              onChange={(e) => handleSkillInputChange(e, index)}
+                              className="bg-transparent text-white placeholder-gray-400 focus:outline-none w-full"
+                              placeholder="Skill name"
+                            />
+                            <select
+                              value={skill.proficiency}
+                              onChange={(e) => {
+                                const newSkills = [...profileData.technicalSkills];
+                                newSkills[index].proficiency = e.target.value as 'beginner' | 'intermediate' | 'advanced' | 'expert';
+                                setProfileData((prev: UserProfileData) => ({ ...prev, technicalSkills: newSkills }));
+                              }}
+                              className="ml-2 bg-slate-800/50 text-white rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 border border-slate-700 hover:border-purple-500 transition-colors duration-200"
+                            >
+                              <option value="beginner">Beginner</option>
+                              <option value="intermediate">Intermediate</option>
+                              <option value="advanced">Advanced</option>
+                              <option value="expert">Expert</option>
+                            </select>
+                            <button
+                              onClick={() => {
+                                const newSkills = profileData.technicalSkills.filter((_, i) => i !== index);
+                                setProfileData((prev: UserProfileData) => ({ ...prev, technicalSkills: newSkills }));
+                              }}
+                              className="ml-2 text-gray-400 hover:text-red-400 transition-colors transform hover:scale-105"
+                            >
+                              <XMarkIcon className="h-5 w-5" />
+                            </button>
+                          </div>
+                        ))}
                         <button
                           onClick={() => {
-                            const newSkills = profileData.technicalSkills.filter((_: Skill, i: number) => i !== index);
+                            const newSkills = [...profileData.technicalSkills, { 
+                              name: '', 
+                              category: 'other' as const, 
+                              proficiency: 'beginner' as const 
+                            }];
                             setProfileData((prev: UserProfileData) => ({ ...prev, technicalSkills: newSkills }));
-                            setSkillInputs(prev => {
-                              const newInputs = { ...prev };
-                              delete newInputs[index];
-                              return newInputs;
-                            });
                           }}
-                          className="text-red-400 hover:text-red-300"
+                          className="flex items-center px-4 py-2 bg-purple-500/20 text-purple-400 rounded-xl hover:bg-purple-500/30 transition-colors transform hover:scale-105"
                         >
-                          Remove
+                          <span className="mr-2">+</span> Add Skill
                         </button>
                       </div>
                     </div>
                   ))}
-                  <button
-                    onClick={() => {
-                      setProfileData((prev: UserProfileData) => ({
-                        ...prev,
-                        technicalSkills: [...prev.technicalSkills, { name: '', category: 'other', proficiency: 'beginner' }]
-                      }));
-                    }}
-                    className="text-blue-400 hover:text-blue-300"
-                  >
-                    + Add Skill
-                  </button>
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-6">
                   {Object.entries(
                     profileData.technicalSkills.reduce((acc: Record<string, Skill[]>, skill: Skill) => {
                       if (!acc[skill.category]) acc[skill.category] = [];
@@ -697,409 +850,141 @@ const Profile: React.FC = () => {
                     }, {} as Record<string, Skill[]>)
                   ).map(([category, skills]) => (
                     <div key={category}>
-                      <h3 className="font-medium text-gray-300 capitalize mb-2">{category}</h3>
-                      <div className="flex flex-wrap gap-2">
+                      <h3 className="text-lg font-medium text-gray-300 capitalize mb-4">{category}</h3>
+                      <div className="flex flex-wrap gap-3">
                         {(skills as Skill[]).map((skill: Skill, index: number) => (
-                          <span
-                            key={index}
-                            className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-600/20 text-blue-300"
-                          >
-                            {skill.name}
-                            <span className="ml-2 text-xs text-blue-400">({skill.proficiency})</span>
-                          </span>
+                          <SkillBadge key={index} skill={skill} index={index} />
                         ))}
                       </div>
                     </div>
                   ))}
                 </div>
               )}
-            </div>
+            </GlowingCard>
 
             {/* Experience */}
-            <div className="bg-gray-800/50 rounded-xl shadow-sm p-6 border border-gray-700">
-              <div className="flex items-center mb-4">
-                <BriefcaseIcon className="h-6 w-6 text-blue-500 mr-3" />
-                <h2 className="text-xl font-semibold text-white">Experience</h2>
+            <GlowingCard className="animate-fadeInUp delay-700">
+              <div className="flex items-center mb-6">
+                <div className="p-2 bg-emerald-500/10 rounded-xl">
+                  <BriefcaseIcon className="h-6 w-6 text-emerald-400" />
+                </div>
+                <h2 className="text-2xl font-semibold text-white ml-4">Experience</h2>
               </div>
               {isEditing ? (
-                <div className="space-y-4">
+                <div className="space-y-6">
                   {profileData.experiences.map((exp: Experience, index: number) => (
-                    <div key={index} className="border border-gray-600 rounded-lg p-4">
-                      <div className="grid grid-cols-2 gap-4 mb-4">
-                        <input
-                          type="text"
-                          value={exp.title}
-                          onChange={(e) => {
-                            const newExps = [...profileData.experiences];
-                            newExps[index].title = e.target.value;
-                            setProfileData((prev: UserProfileData) => ({ ...prev, experiences: newExps }));
-                          }}
-                          className="px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white placeholder-gray-400"
-                          placeholder="Title"
-                        />
+                    <div key={index} className="border border-slate-600 rounded-xl p-6 bg-slate-800/30 transition-all duration-300 hover:border-emerald-500">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                         <input
                           type="text"
                           value={exp.company}
                           onChange={(e) => {
-                            const newExps = [...profileData.experiences];
-                            newExps[index].company = e.target.value;
-                            setProfileData((prev: UserProfileData) => ({ ...prev, experiences: newExps }));
+                            const newExp = [...profileData.experiences];
+                            newExp[index].company = e.target.value;
+                            setProfileData((prev: UserProfileData) => ({ ...prev, experiences: newExp }));
                           }}
-                          className="px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white placeholder-gray-400"
+                          className="px-4 py-3 bg-slate-700/30 border border-slate-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors duration-200 hover:border-purple-500"
                           placeholder="Company"
                         />
-                      </div>
-                      <div className="grid grid-cols-2 gap-4 mb-4">
                         <input
                           type="text"
+                          value={exp.title}
+                          onChange={(e) => {
+                            const newExp = [...profileData.experiences];
+                            newExp[index].title = e.target.value;
+                            setProfileData((prev: UserProfileData) => ({ ...prev, experiences: newExp }));
+                          }}
+                          className="px-4 py-3 bg-slate-700/30 border border-slate-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors duration-200 hover:border-purple-500"
+                          placeholder="Title"
+                        />
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <input
+                          type="date"
                           value={exp.startDate}
                           onChange={(e) => {
-                            const newExps = [...profileData.experiences];
-                            newExps[index].startDate = e.target.value;
-                            setProfileData((prev: UserProfileData) => ({ ...prev, experiences: newExps }));
+                            const newExp = [...profileData.experiences];
+                            newExp[index].startDate = e.target.value;
+                            setProfileData((prev: UserProfileData) => ({ ...prev, experiences: newExp }));
                           }}
-                          className="px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white placeholder-gray-400"
-                          placeholder="Start Date"
+                          className="px-4 py-3 bg-slate-700/30 border border-slate-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors duration-200 hover:border-purple-500"
                         />
                         <input
-                          type="text"
+                          type="date"
                           value={exp.endDate}
                           onChange={(e) => {
-                            const newExps = [...profileData.experiences];
-                            newExps[index].endDate = e.target.value;
-                            setProfileData((prev: UserProfileData) => ({ ...prev, experiences: newExps }));
+                            const newExp = [...profileData.experiences];
+                            newExp[index].endDate = e.target.value;
+                            setProfileData((prev: UserProfileData) => ({ ...prev, experiences: newExp }));
                           }}
-                          className="px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white placeholder-gray-400"
-                          placeholder="End Date"
+                          className="px-4 py-3 bg-slate-700/30 border border-slate-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors duration-200 hover:border-purple-500"
                         />
                       </div>
                       <textarea
                         value={exp.description}
                         onChange={(e) => {
-                          const newExps = [...profileData.experiences];
-                          newExps[index].description = e.target.value;
-                          setProfileData((prev: UserProfileData) => ({ ...prev, experiences: newExps }));
+                          const newExp = [...profileData.experiences];
+                          newExp[index].description = e.target.value;
+                          setProfileData((prev: UserProfileData) => ({ ...prev, experiences: newExp }));
                         }}
-                        rows={3}
-                        className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white placeholder-gray-400 mb-4"
+                        rows={4}
+                        className="w-full px-4 py-3 bg-slate-700/30 border border-slate-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 mb-4 focus:border-transparent transition-colors duration-200 hover:border-purple-500"
                         placeholder="Description"
                       />
-                      <div className="flex justify-end">
-                        <button
-                          onClick={() => {
-                            const newExps = profileData.experiences.filter((_: Experience, i: number) => i !== index);
-                            setProfileData((prev: UserProfileData) => ({ ...prev, experiences: newExps }));
-                          }}
-                          className="text-red-400 hover:text-red-300"
-                        >
-                          Remove
-                        </button>
-                      </div>
+                      <button
+                        onClick={() => {
+                          const newExp = profileData.experiences.filter((_, i) => i !== index);
+                          setProfileData((prev: UserProfileData) => ({ ...prev, experiences: newExp }));
+                        }}
+                        className="text-red-400 hover:text-red-300 transition-colors transform hover:scale-105"
+                      >
+                        Remove Experience
+                      </button>
                     </div>
                   ))}
                   <button
                     onClick={() => {
-                      setProfileData((prev: UserProfileData) => ({
-                        ...prev,
-                        experiences: [...prev.experiences, {
-                          id: Date.now().toString(),
-                          title: '',
-                          company: '',
-                          startDate: '',
-                          endDate: '',
-                          description: '',
-                          technologies: [],
-                          type: 'work'
-                        }]
-                      }));
+                      const newExp = [...profileData.experiences, {
+                        id: Date.now().toString(),
+                        title: '',
+                        company: '',
+                        startDate: '',
+                        endDate: '',
+                        description: '',
+                        technologies: [],
+                        type: 'work' as const
+                      }];
+                      setProfileData((prev: UserProfileData) => ({ ...prev, experiences: newExp }));
                     }}
-                    className="text-blue-400 hover:text-blue-300"
+                    className="flex items-center px-4 py-2 bg-purple-500/20 text-purple-400 rounded-xl hover:bg-purple-500/30 transition-colors transform hover:scale-105"
                   >
-                    + Add Experience
+                    <span className="mr-2">+</span> Add Experience
                   </button>
                 </div>
               ) : (
-                <div className="space-y-6">
+                <div className="space-y-8">
                   {profileData.experiences.map((exp: Experience, index: number) => (
-                    <div key={index} className="border-l-4 border-blue-500 pl-4">
-                      <h3 className="font-semibold text-white">{exp.title}</h3>
-                      <p className="text-gray-300">{exp.company}</p>
-                      <p className="text-sm text-gray-400">{exp.startDate} - {exp.endDate}</p>
-                      <p className="mt-2 text-gray-300">{exp.description}</p>
-                    </div>
+                    <ExperienceCard key={index} experience={exp} index={index} />
                   ))}
                 </div>
               )}
-            </div>
-
-            {/* Projects */}
-            <div className="bg-gray-800/50 rounded-xl shadow-sm p-6 border border-gray-700">
-              <div className="flex items-center mb-4">
-                <CodeBracketIcon className="h-6 w-6 text-blue-500 mr-3" />
-                <h2 className="text-xl font-semibold text-white">Projects</h2>
-              </div>
-              {isEditing ? (
-                <div className="space-y-4">
-                  {profileData.projects.map((project: Project, index: number) => (
-                    <div key={index} className="border border-gray-600 rounded-lg p-4">
-                      <input
-                        type="text"
-                        value={project.name}
-                        onChange={(e) => {
-                          const newProjects = [...profileData.projects];
-                          newProjects[index].name = e.target.value;
-                          setProfileData((prev: UserProfileData) => ({ ...prev, projects: newProjects }));
-                        }}
-                        className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white placeholder-gray-400 mb-4"
-                        placeholder="Project Name"
-                      />
-                      <textarea
-                        value={project.description}
-                        onChange={(e) => {
-                          const newProjects = [...profileData.projects];
-                          newProjects[index].description = e.target.value;
-                          setProfileData((prev: UserProfileData) => ({ ...prev, projects: newProjects }));
-                        }}
-                        rows={3}
-                        className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white placeholder-gray-400 mb-4"
-                        placeholder="Project Description"
-                      />
-                      <div className="grid grid-cols-2 gap-4 mb-4">
-                        <input
-                          type="text"
-                          value={project.role}
-                          onChange={(e) => {
-                            const newProjects = [...profileData.projects];
-                            newProjects[index].role = e.target.value;
-                            setProfileData((prev: UserProfileData) => ({ ...prev, projects: newProjects }));
-                          }}
-                          className="px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white placeholder-gray-400"
-                          placeholder="Your Role"
-                        />
-                        <input
-                          type="text"
-                          value={project.technologies.join(', ')}
-                          onChange={(e) => {
-                            const newProjects = [...profileData.projects];
-                            newProjects[index].technologies = e.target.value.split(',').map(t => t.trim());
-                            setProfileData((prev: UserProfileData) => ({ ...prev, projects: newProjects }));
-                          }}
-                          className="px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white placeholder-gray-400"
-                          placeholder="Technologies (comma-separated)"
-                        />
-                      </div>
-                      <div className="flex justify-end">
-                        <button
-                          onClick={() => {
-                            const newProjects = profileData.projects.filter((_: Project, i: number) => i !== index);
-                            setProfileData((prev: UserProfileData) => ({ ...prev, projects: newProjects }));
-                          }}
-                          className="text-red-400 hover:text-red-300"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                  <button
-                    onClick={() => {
-                      setProfileData((prev: UserProfileData) => ({
-                        ...prev,
-                        projects: [...prev.projects, {
-                          id: Date.now().toString(),
-                          name: '',
-                          description: '',
-                          technologies: [],
-                          role: '',
-                          startDate: '',
-                          endDate: ''
-                        }]
-                      }));
-                    }}
-                    className="text-blue-400 hover:text-blue-300"
-                  >
-                    + Add Project
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-6">
-                  {profileData.projects.map((project: Project, index: number) => (
-                    <div key={index} className="border-l-4 border-blue-500 pl-4">
-                      <h3 className="font-semibold text-white">{project.name}</h3>
-                      <p className="text-gray-300">{project.description}</p>
-                      <p className="text-sm text-gray-400">Role: {project.role}</p>
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {project.technologies.map((tech: string, techIndex: number) => (
-                          <span
-                            key={techIndex}
-                            className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-700 text-gray-300"
-                          >
-                            {tech}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Participated Hackathons */}
-            <div className="bg-gray-800/50 rounded-xl shadow-sm p-6 border border-gray-700">
-              <div className="flex items-center mb-4">
-                <TrophyIcon className="h-6 w-6 text-yellow-500 mr-3" />
-                <h2 className="text-xl font-semibold text-white">Participated Hackathons</h2>
-              </div>
-              {isEditing ? (
-                <div className="space-y-4">
-                  {profileData.hackathons?.map((hackathon: Hackathon, index: number) => (
-                    <div key={index} className="border border-gray-600 rounded-lg p-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                        <input
-                          type="text"
-                          value={hackathon.name}
-                          onChange={(e) => {
-                            const newHackathons = [...profileData.hackathons];
-                            newHackathons[index].name = e.target.value;
-                            setProfileData((prev: UserProfileData) => ({ ...prev, hackathons: newHackathons }));
-                          }}
-                          className="px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white placeholder-gray-400"
-                          placeholder="Hackathon Name"
-                        />
-                        <input
-                          type="text"
-                          value={hackathon.organizer}
-                          onChange={(e) => {
-                            const newHackathons = [...profileData.hackathons];
-                            newHackathons[index].organizer = e.target.value;
-                            setProfileData((prev: UserProfileData) => ({ ...prev, hackathons: newHackathons }));
-                          }}
-                          className="px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white placeholder-gray-400"
-                          placeholder="Organizer"
-                        />
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                        <input
-                          type="date"
-                          value={hackathon.startDate}
-                          onChange={(e) => {
-                            const newHackathons = [...profileData.hackathons];
-                            newHackathons[index].startDate = e.target.value;
-                            setProfileData((prev: UserProfileData) => ({ ...prev, hackathons: newHackathons }));
-                          }}
-                          className="px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white placeholder-gray-400"
-                        />
-                        <input
-                          type="date"
-                          value={hackathon.endDate}
-                          onChange={(e) => {
-                            const newHackathons = [...profileData.hackathons];
-                            newHackathons[index].endDate = e.target.value;
-                            setProfileData((prev: UserProfileData) => ({ ...prev, hackathons: newHackathons }));
-                          }}
-                          className="px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white placeholder-gray-400"
-                        />
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                        <input
-                          type="text"
-                          value={hackathon.placement || ''}
-                          onChange={(e) => {
-                            const newHackathons = [...profileData.hackathons];
-                            newHackathons[index].placement = e.target.value;
-                            setProfileData((prev: UserProfileData) => ({ ...prev, hackathons: newHackathons }));
-                          }}
-                          className="px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white placeholder-gray-400"
-                          placeholder="Placement (e.g., 1st Place)"
-                        />
-                        <input
-                          type="text"
-                          value={hackathon.prize || ''}
-                          onChange={(e) => {
-                            const newHackathons = [...profileData.hackathons];
-                            newHackathons[index].prize = e.target.value;
-                            setProfileData((prev: UserProfileData) => ({ ...prev, hackathons: newHackathons }));
-                          }}
-                          className="px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white placeholder-gray-400"
-                          placeholder="Prize (e.g., $1000)"
-                        />
-                      </div>
-                      <div className="flex justify-end">
-                        <button
-                          onClick={() => {
-                            const newHackathons = profileData.hackathons.filter((_: Hackathon, i: number) => i !== index);
-                            setProfileData((prev: UserProfileData) => ({ ...prev, hackathons: newHackathons }));
-                          }}
-                          className="text-red-400 hover:text-red-300"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                  <button
-                    onClick={() => {
-                      setProfileData((prev: UserProfileData) => ({
-                        ...prev,
-                        hackathons: [...(prev.hackathons || []), {
-                          id: Date.now().toString(),
-                          name: '',
-                          organizer: '',
-                          startDate: '',
-                          endDate: '',
-                          placement: '',
-                          prize: ''
-                        }]
-                      }));
-                    }}
-                    className="text-blue-400 hover:text-blue-300"
-                  >
-                    + Add Hackathon
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-6">
-                  {profileData.hackathons?.map((hackathon: Hackathon, index: number) => (
-                    <div key={index} className="border-l-4 border-yellow-500 pl-4">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <h3 className="font-semibold text-white">{hackathon.name}</h3>
-                          <p className="text-sm text-gray-400">{hackathon.organizer}</p>
-                          <p className="text-sm text-gray-400">
-                            {new Date(hackathon.startDate).toLocaleDateString()} - {new Date(hackathon.endDate).toLocaleDateString()}
-                          </p>
-                        </div>
-                        {hackathon.placement && (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-500/20 text-green-300">
-                            {hackathon.placement}
-                          </span>
-                        )}
-                      </div>
-                      {hackathon.prize && (
-                        <div className="flex items-center gap-2 mt-2">
-                          <TrophyIcon className="h-4 w-4 text-yellow-400" />
-                          <span className="text-sm text-yellow-400">{hackathon.prize}</span>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            </GlowingCard>
           </div>
 
           {/* Right Column */}
           <div className="space-y-8">
             {/* Education */}
-            <div className="bg-gray-800/50 rounded-xl shadow-sm p-6 border border-gray-700">
-              <div className="flex items-center mb-4">
-                <AcademicCapIcon className="h-6 w-6 text-blue-500 mr-3" />
-                <h2 className="text-xl font-semibold text-white">Education</h2>
+            <GlowingCard className="animate-fadeInUp delay-800">
+              <div className="flex items-center mb-6">
+                <div className="p-2 bg-yellow-500/10 rounded-xl">
+                  <AcademicCapIcon className="h-6 w-6 text-yellow-400" />
+                </div>
+                <h2 className="text-2xl font-semibold text-white ml-4">Education</h2>
               </div>
               {isEditing ? (
-                <div className="space-y-4">
+                <div className="space-y-6">
                   {profileData.education.map((edu: Education, index: number) => (
-                    <div key={index} className="border border-gray-600 rounded-lg p-4">
+                    <div key={index} className="border border-slate-600 rounded-xl p-6 bg-slate-800/30 transition-all duration-300 hover:border-yellow-500">
                       <input
                         type="text"
                         value={edu.institution}
@@ -1108,10 +993,10 @@ const Profile: React.FC = () => {
                           newEdu[index].institution = e.target.value;
                           setProfileData((prev: UserProfileData) => ({ ...prev, education: newEdu }));
                         }}
-                        className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white placeholder-gray-400 mb-4"
+                        className="w-full px-4 py-3 bg-slate-700/30 border border-slate-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 mb-4 focus:border-transparent transition-colors duration-200 hover:border-purple-500"
                         placeholder="Institution"
                       />
-                      <div className="grid grid-cols-2 gap-4 mb-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                         <input
                           type="text"
                           value={edu.degree}
@@ -1120,7 +1005,7 @@ const Profile: React.FC = () => {
                             newEdu[index].degree = e.target.value;
                             setProfileData((prev: UserProfileData) => ({ ...prev, education: newEdu }));
                           }}
-                          className="px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white placeholder-gray-400"
+                          className="px-4 py-3 bg-slate-700/30 border border-slate-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors duration-200 hover:border-purple-500"
                           placeholder="Degree"
                         />
                         <input
@@ -1131,68 +1016,105 @@ const Profile: React.FC = () => {
                             newEdu[index].major = e.target.value;
                             setProfileData((prev: UserProfileData) => ({ ...prev, education: newEdu }));
                           }}
-                          className="px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white placeholder-gray-400"
+                          className="px-4 py-3 bg-slate-700/30 border border-slate-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors duration-200 hover:border-purple-500"
                           placeholder="Major"
                         />
                       </div>
-                      <div className="flex justify-end">
-                        <button
-                          onClick={() => {
-                            const newEdu = profileData.education.filter((_: Education, i: number) => i !== index);
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <input
+                          type="date"
+                          value={edu.startDate}
+                          onChange={(e) => {
+                            const newEdu = [...profileData.education];
+                            newEdu[index].startDate = e.target.value;
                             setProfileData((prev: UserProfileData) => ({ ...prev, education: newEdu }));
                           }}
-                          className="text-red-400 hover:text-red-300"
-                        >
-                          Remove
-                        </button>
+                          className="px-4 py-3 bg-slate-700/30 border border-slate-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors duration-200 hover:border-purple-500"
+                        />
+                        <input
+                          type="date"
+                          value={edu.endDate}
+                          onChange={(e) => {
+                            const newEdu = [...profileData.education];
+                            newEdu[index].endDate = e.target.value;
+                            setProfileData((prev: UserProfileData) => ({ ...prev, education: newEdu }));
+                          }}
+                          className="px-4 py-3 bg-slate-700/30 border border-slate-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors duration-200 hover:border-purple-500"
+                        />
                       </div>
+                      <input
+                        type="text"
+                        value={edu.gpa}
+                        onChange={(e) => {
+                          const newEdu = [...profileData.education];
+                          newEdu[index].gpa = e.target.value;
+                          setProfileData((prev: UserProfileData) => ({ ...prev, education: newEdu }));
+                        }}
+                        className="w-full px-4 py-3 bg-slate-700/30 border border-slate-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 mb-4 focus:border-transparent transition-colors duration-200 hover:border-purple-500"
+                        placeholder="GPA"
+                      />
+                      <button
+                        onClick={() => {
+                          const newEdu = profileData.education.filter((_, i) => i !== index);
+                          setProfileData((prev: UserProfileData) => ({ ...prev, education: newEdu }));
+                        }}
+                        className="text-red-400 hover:text-red-300 transition-colors transform hover:scale-105"
+                      >
+                        Remove Education
+                      </button>
                     </div>
                   ))}
                   <button
                     onClick={() => {
-                      setProfileData((prev: UserProfileData) => ({
-                        ...prev,
-                        education: [...prev.education, {
-                          id: Date.now().toString(),
-                          institution: '',
-                          degree: '',
-                          major: '',
-                          startDate: '',
-                          endDate: '',
-                          relevantCoursework: []
-                        }]
-                      }));
+                      const newEdu = [...profileData.education, {
+                        id: Date.now().toString(),
+                        institution: '',
+                        degree: '',
+                        major: '',
+                        startDate: '',
+                        endDate: '',
+                        gpa: '',
+                        relevantCoursework: []
+                      }];
+                      setProfileData((prev: UserProfileData) => ({ ...prev, education: newEdu }));
                     }}
-                    className="text-blue-400 hover:text-blue-300"
+                    className="flex items-center px-4 py-2 bg-purple-500/20 text-purple-400 rounded-xl hover:bg-purple-500/30 transition-colors transform hover:scale-105"
                   >
-                    + Add Education
+                    <span className="mr-2">+</span> Add Education
                   </button>
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-6">
                   {profileData.education.map((edu: Education, index: number) => (
-                    <div key={index} className="border-l-4 border-blue-500 pl-4">
-                      <h3 className="font-semibold text-white">{edu.institution}</h3>
-                      <p className="text-gray-300">{edu.degree} in {edu.major}</p>
-                      <p className="text-sm text-gray-400">{edu.startDate} - {edu.endDate}</p>
+                    <div key={index} className="border-l-4 border-yellow-500 pl-6 animate-fadeInUp" style={{ animationDelay: `${index * 100}ms` }}>
+                      <h3 className="text-xl font-semibold text-white">{edu.institution}</h3>
+                      <p className="text-lg text-gray-300">{edu.degree} in {edu.major}</p>
+                      <p className="text-sm text-gray-400">
+                        {new Date(edu.startDate).toLocaleDateString()} - {new Date(edu.endDate).toLocaleDateString()}
+                      </p>
+                      {edu.gpa && (
+                        <p className="mt-2 text-sm text-gray-300">GPA: {edu.gpa}</p>
+                      )}
                     </div>
                   ))}
                 </div>
               )}
-            </div>
+            </GlowingCard>
 
             {/* Links */}
-            <div className="bg-gray-800/50 rounded-xl shadow-sm p-6 border border-gray-700">
-              <div className="flex items-center mb-4">
-                <LinkIcon className="h-6 w-6 text-blue-500 mr-3" />
-                <h2 className="text-xl font-semibold text-white">Links</h2>
+            <GlowingCard className="animate-fadeInUp delay-900">
+              <div className="flex items-center mb-6">
+                <div className="p-2 bg-pink-500/10 rounded-xl">
+                  <LinkIcon className="h-6 w-6 text-pink-400" />
+                </div>
+                <h2 className="text-2xl font-semibold text-white ml-4">Links</h2>
               </div>
               {isEditing ? (
                 <div className="space-y-4">
                   {Object.entries(profileData.links).map(([platform, url], index) => {
                     const typedUrl = url as string | string[];
                     return (
-                      <div key={index} className="flex items-center gap-2">
+                      <div key={index} className="flex items-center gap-3 border border-slate-600 rounded-xl px-4 py-2 bg-slate-800/30 focus-within:border-purple-500 transition-colors duration-200">
                         <input
                           type="text"
                           value={typeof typedUrl === 'string' ? typedUrl : typedUrl[0]}
@@ -1202,7 +1124,7 @@ const Profile: React.FC = () => {
                               links: { ...prev.links, [platform]: e.target.value }
                             }));
                           }}
-                          className="flex-1 px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white placeholder-gray-400"
+                          className="flex-1 bg-transparent text-white placeholder-gray-400 focus:outline-none"
                           placeholder={`${platform} URL`}
                         />
                         <button
@@ -1211,9 +1133,9 @@ const Profile: React.FC = () => {
                             delete newLinks[platform as keyof typeof profileData.links];
                             setProfileData((prev: UserProfileData) => ({ ...prev, links: newLinks }));
                           }}
-                          className="text-red-400 hover:text-red-300"
+                          className="p-2 text-red-400 hover:text-red-300 transition-colors transform hover:scale-105"
                         >
-                          Remove
+                          <XMarkIcon className="h-5 w-5" />
                         </button>
                       </div>
                     );
@@ -1228,13 +1150,13 @@ const Profile: React.FC = () => {
                         }));
                       }
                     }}
-                    className="text-blue-400 hover:text-blue-300"
+                    className="flex items-center px-4 py-2 bg-purple-500/20 text-purple-400 rounded-xl hover:bg-purple-500/30 transition-colors transform hover:scale-105"
                   >
-                    + Add Link
+                    <span className="mr-2">+</span> Add Link
                   </button>
                 </div>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {Object.entries(profileData.links).map(([platform, url], index) => {
                     const typedUrl = url as string | string[];
                     return (
@@ -1243,31 +1165,126 @@ const Profile: React.FC = () => {
                         href={typeof typedUrl === 'string' ? typedUrl : typedUrl[0]}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center text-blue-400 hover:text-blue-300"
+                        className="flex items-center px-4 py-3 bg-slate-700/30 rounded-xl text-purple-400 hover:bg-slate-700/50 transition-colors transform hover:scale-105"
                       >
-                        <span className="capitalize">{platform}</span>
-                        <LinkIcon className="h-4 w-4 ml-2" />
+                        <span className="capitalize font-medium">{platform}</span>
+                        <LinkIcon className="h-5 w-5 ml-2" />
                       </a>
                     );
                   })}
                 </div>
               )}
-            </div>
+            </GlowingCard>
           </div>
         </div>
 
         {/* Save Button */}
         {isEditing && (
-          <div className="mt-8 flex justify-end">
+          <div className="mt-12 flex justify-end animate-fadeInUp delay-1000">
             <button
               onClick={handleSubmit}
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-800"
+              className="px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:from-purple-700 hover:to-pink-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-800 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
             >
               Save Changes
             </button>
           </div>
         )}
       </div>
+
+      {/* Custom CSS for animations */}
+      <style>
+        {`
+          @keyframes fadeInUp {
+            from {
+              opacity: 0;
+              transform: translateY(30px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+          
+          .animate-fadeInUp {
+            animation: fadeInUp 0.8s ease-out forwards;
+          }
+          
+          .animate-fadeInUp.delay-100 {
+            animation-delay: 0.1s;
+          }
+          .animate-fadeInUp.delay-200 {
+            animation-delay: 0.2s;
+          }
+          .animate-fadeInUp.delay-300 {
+            animation-delay: 0.3s;
+          }
+          .animate-fadeInUp.delay-400 {
+            animation-delay: 0.4s;
+          }
+          .animate-fadeInUp.delay-500 {
+            animation-delay: 0.5s;
+          }
+          .animate-fadeInUp.delay-600 {
+            animation-delay: 0.6s;
+          }
+          .animate-fadeInUp.delay-700 {
+            animation-delay: 0.7s;
+          }
+          .animate-fadeInUp.delay-800 {
+            animation-delay: 0.8s;
+          }
+          .animate-fadeInUp.delay-900 {
+            animation-delay: 0.9s;
+          }
+          .animate-fadeInUp.delay-1000 {
+            animation-delay: 1.0s;
+          }
+
+          @keyframes float {
+            0%, 100% {
+              transform: translateY(0px);
+            }
+            50% {
+              transform: translateY(-10px);
+            }
+          }
+          
+          .animate-float {
+            animation: float 3s ease-in-out infinite;
+          }
+
+          @keyframes blob {
+            0% {
+              transform: translate(0px, 0px) scale(1);
+            }
+            33% {
+              transform: translate(30px, -50px) scale(1.1);
+            }
+            66% {
+              transform: translate(-20px, 20px) scale(0.9);
+            }
+            100% {
+              transform: translate(0px, 0px) scale(1);
+            }
+          }
+          
+          .animate-blob {
+            animation: blob 7s infinite;
+          }
+          
+          .animation-delay-2000 {
+            animation-delay: 2s;
+          }
+          
+          .animation-delay-4000 {
+            animation-delay: 4s;
+          }
+          
+          .animation-delay-6000 {
+            animation-delay: 6s;
+          }
+        `}
+      </style>
     </div>
   );
 };
