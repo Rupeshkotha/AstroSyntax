@@ -20,7 +20,7 @@ const navigation: NavItem[] = [
   { name: 'Overview', path: '/dashboard', icon: HomeIcon },
   { name: 'My Projects', path: '/dashboard/projects', icon: ChartBarIcon },
   { name: 'Team Hub', path: '/teams', icon: UserGroupIcon },
-  { name: 'Idea Generator', path: '/dashboard/idea-generator', icon: LightBulbIcon },
+  { name: 'Idea Generator', path: '/ideagenerator', icon: LightBulbIcon },
   { name: 'Hackathons', path: '/hackathons', icon: CalendarIcon },
   { name: 'Resources', path: '/dashboard/resources', icon: BookOpenIcon },
   { name: 'Profile', path: '/profile', icon: UserCircleIcon },
