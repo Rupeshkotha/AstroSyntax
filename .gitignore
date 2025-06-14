@@ -57,6 +57,9 @@ yarn-error.log*
 .env.production.local
 .env.local
 
+# Firebase service account
+firebase-service-account.json
+
 # parcel-bundler cache
 .cache
 .parcel-cache
