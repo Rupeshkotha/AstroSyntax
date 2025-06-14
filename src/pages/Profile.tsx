@@ -19,6 +19,10 @@ import {
   PhotoIcon,
   CameraIcon,
   TrashIcon,
+  EnvelopeIcon,
+  PhoneIcon,
+  MapPinIcon,
+  ClockIcon,
 } from '@heroicons/react/24/outline';
 
 // Initialize Cloudinary
@@ -118,13 +122,13 @@ const Profile: React.FC = () => {
   const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
   const [profileData, setProfileData] = useState<UserProfileData>({
-    id: currentUser?.uid || '',
+    id: '',
     name: '',
     title: '',
     bio: '',
     location: '',
     timezone: '',
-    email: currentUser?.email || '',
+    email: '',
     phone: '',
     profilePicture: '',
     coverPhoto: '',
@@ -148,13 +152,16 @@ const Profile: React.FC = () => {
 
   useEffect(() => {
     const loadProfileData = async () => {
-      if (!currentUser) {
-        setLoading(false);
-        return;
-      }
-
       try {
-        const targetUserId = userId || currentUser.uid;
+        // If no userId is provided in the URL, use the current user's ID
+        const targetUserId = userId || currentUser?.uid;
+        
+        if (!targetUserId) {
+          setError('No user ID provided');
+          setLoading(false);
+          return;
+        }
+
         const userDocRef = doc(db, 'users', targetUserId);
         const userDoc = await getDoc(userDocRef);
         
@@ -162,14 +169,15 @@ const Profile: React.FC = () => {
           const data = userDoc.data() as UserProfileData;
           setProfileData(data);
         } else {
-          setProfileData({
-            id: currentUser.uid,
-            name: currentUser.displayName || '',
+          // If the user document doesn't exist, create a basic profile
+          const basicProfile: UserProfileData = {
+            id: targetUserId,
+            name: currentUser?.displayName || 'Anonymous',
             title: '',
             bio: '',
             location: '',
             timezone: '',
-            email: currentUser.email || '',
+            email: currentUser?.email || '',
             phone: '',
             profilePicture: '',
             coverPhoto: '',
@@ -181,7 +189,13 @@ const Profile: React.FC = () => {
             education: [],
             projects: [],
             links: {},
-          });
+          };
+          setProfileData(basicProfile);
+          
+          // Create the user document if it doesn't exist
+          if (targetUserId === currentUser?.uid) {
+            await setDoc(userDocRef, basicProfile);
+          }
         }
       } catch (err: any) {
         console.error('Error loading profile:', err);
@@ -193,6 +207,9 @@ const Profile: React.FC = () => {
 
     loadProfileData();
   }, [currentUser, userId]);
+
+  // Only show edit button if viewing own profile
+  const isOwnProfile = userId === currentUser?.uid || (!userId && currentUser);
 
   const handleSave = async (data: UserProfileData) => {
     try {
@@ -340,760 +357,220 @@ const Profile: React.FC = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading profile...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <p className="text-red-500">{error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-          >
-            Retry
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-gray-900 py-12">
-      {/* Edit Profile Modal */}
-      {isEditing && !userId && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-gray-900/95 backdrop-blur-sm border-b border-gray-700 px-6 py-4 flex justify-between items-center rounded-t-2xl">
-              <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">Edit Profile</h2>
-              <button
-                onClick={() => setIsEditing(false)}
-                className="text-gray-400 hover:text-white transition-colors"
-              >
-                ✕
-              </button>
+    <div className="min-h-screen bg-gradient-to-br from-background to-surface/50">
+      {loading ? (
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        </div>
+      ) : error ? (
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-red-500">{error}</div>
+        </div>
+      ) : (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Profile Header */}
+          <div className="relative rounded-lg overflow-hidden bg-white shadow-sm">
+            {/* Cover Photo */}
+            <div className="h-48 bg-gradient-to-r from-blue-500 to-purple-600 relative">
+              {profileData.coverPhoto && (
+                <img
+                  src={profileData.coverPhoto}
+                  alt="Cover"
+                  className="w-full h-full object-cover"
+                />
+              )}
+              {isOwnProfile && (
+                <button
+                  onClick={() => coverImageInputRef.current?.click()}
+                  className="absolute bottom-4 right-4 p-2 rounded-full bg-white/20 backdrop-blur-sm hover:bg-white/30 transition-colors"
+                >
+                  <CameraIcon className="w-5 h-5 text-white" />
+                </button>
+              )}
             </div>
-            <EditProfileForm
-              initialData={profileData}
-              onSave={handleSave}
-              onCancel={() => setIsEditing(false)}
-            />
+
+            {/* Profile Picture and Basic Info */}
+            <div className="px-6 pb-6">
+              <div className="flex items-end -mt-16 mb-4">
+                <div className="relative">
+                  {profileData.profilePicture ? (
+                    <img
+                      src={profileData.profilePicture}
+                      alt={profileData.name}
+                      className="w-32 h-32 rounded-full border-4 border-white shadow-lg"
+                    />
+                  ) : (
+                    <div className="w-32 h-32 rounded-full border-4 border-white shadow-lg bg-gray-200 flex items-center justify-center">
+                      <UserCircleIcon className="w-24 h-24 text-gray-400" />
+                    </div>
+                  )}
+                  {isOwnProfile && (
+                    <button
+                      onClick={() => profileImageInputRef.current?.click()}
+                      className="absolute bottom-0 right-0 p-2 rounded-full bg-white shadow-lg hover:bg-gray-50 transition-colors"
+                    >
+                      <CameraIcon className="w-5 h-5 text-gray-600" />
+                    </button>
+                  )}
+                </div>
+                <div className="ml-6 flex-1">
+                  <h1 className="text-2xl font-bold text-gray-900">{profileData.name}</h1>
+                  {profileData.title && (
+                    <p className="text-gray-600">{profileData.title}</p>
+                  )}
+                </div>
+                {isOwnProfile && (
+                  <button
+                    onClick={() => setIsEditing(true)}
+                    className="btn btn-primary"
+                  >
+                    <PencilIcon className="w-5 h-5 mr-2" />
+                    Edit Profile
+                  </button>
+                )}
+              </div>
+
+              {/* Profile Content */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                {/* Left Column */}
+                <div className="md:col-span-2 space-y-8">
+                  {/* About Section */}
+                  <div className="bg-white rounded-lg shadow-sm p-6">
+                    <h2 className="text-xl font-semibold text-gray-900 mb-4">About</h2>
+                    <p className="text-gray-600">{profileData.bio || 'No bio provided'}</p>
+                  </div>
+
+                  {/* Skills Section */}
+                  <div className="bg-white rounded-lg shadow-sm p-6">
+                    <h2 className="text-xl font-semibold text-gray-900 mb-4">Skills</h2>
+                    <div className="space-y-4">
+                      <div>
+                        <h3 className="text-sm font-medium text-gray-500 mb-2">Technical Skills</h3>
+                        <div className="flex flex-wrap gap-2">
+                          {profileData.technicalSkills.map((skill, index) => (
+                            <span key={index} className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+                              {typeof skill === 'string' ? skill : skill.name}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-medium text-gray-500 mb-2">Soft Skills</h3>
+                        <div className="flex flex-wrap gap-2">
+                          {profileData.softSkills.map((skill, index) => (
+                            <span key={index} className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">
+                              {skill}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Experience Section */}
+                  <div className="bg-white rounded-lg shadow-sm p-6">
+                    <h2 className="text-xl font-semibold text-gray-900 mb-4">Experience</h2>
+                    <div className="space-y-6">
+                      {profileData.experiences.map((exp, index) => (
+                        <div key={index} className="border-l-2 border-gray-200 pl-4">
+                          <h3 className="font-medium text-gray-900">{exp.title}</h3>
+                          <p className="text-gray-600">{exp.company}</p>
+                          <p className="text-sm text-gray-500">{exp.startDate} - {exp.endDate}</p>
+                          <p className="mt-2 text-gray-600">{exp.description}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Column */}
+                <div className="space-y-8">
+                  {/* Contact Information */}
+                  <div className="bg-white rounded-lg shadow-sm p-6">
+                    <h2 className="text-xl font-semibold text-gray-900 mb-4">Contact Information</h2>
+                    <div className="space-y-3">
+                      {profileData.email && (
+                        <div className="flex items-center text-gray-600">
+                          <EnvelopeIcon className="w-5 h-5 mr-2" />
+                          <span>{profileData.email}</span>
+                        </div>
+                      )}
+                      {profileData.phone && (
+                        <div className="flex items-center text-gray-600">
+                          <PhoneIcon className="w-5 h-5 mr-2" />
+                          <span>{profileData.phone}</span>
+                        </div>
+                      )}
+                      {profileData.location && (
+                        <div className="flex items-center text-gray-600">
+                          <MapPinIcon className="w-5 h-5 mr-2" />
+                          <span>{profileData.location}</span>
+                        </div>
+                      )}
+                      {profileData.timezone && (
+                        <div className="flex items-center text-gray-600">
+                          <ClockIcon className="w-5 h-5 mr-2" />
+                          <span>{profileData.timezone}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Languages */}
+                  <div className="bg-white rounded-lg shadow-sm p-6">
+                    <h2 className="text-xl font-semibold text-gray-900 mb-4">Languages</h2>
+                    <div className="flex flex-wrap gap-2">
+                      {profileData.languages.map((lang, index) => (
+                        <span key={index} className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm">
+                          {lang}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Tools */}
+                  <div className="bg-white rounded-lg shadow-sm p-6">
+                    <h2 className="text-xl font-semibold text-gray-900 mb-4">Tools</h2>
+                    <div className="flex flex-wrap gap-2">
+                      {profileData.tools.map((tool, index) => (
+                        <span key={index} className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm">
+                          {tool}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Profile Header */}
-        <div className="relative w-full h-48 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg shadow-md mb-20 group overflow-hidden">
-          {profileData.coverPhoto ? (
-            <img
-              src={profileData.coverPhoto}
-              alt="Cover Photo"
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-white text-lg font-semibold">No Cover Photo</div>
-          )}
-          {isEditing && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-white">
-              <label
-                htmlFor="cover-upload"
-                className="flex items-center justify-center cursor-pointer px-4 py-2 bg-white/10 backdrop-blur-sm rounded-lg text-white text-sm font-medium hover:bg-white/20 transition-colors mb-2"
-              >
-                <CameraIcon className="w-5 h-5 mr-2" />
-                Upload Cover Photo
-                <input
-                  id="cover-upload"
-                  type="file"
-                  ref={coverImageInputRef}
-                  className="hidden"
-                  accept="image/*"
-                  onChange={(e) => handleImageUpload(e, 'cover')}
-                  disabled={uploadingImage}
-                />
-              </label>
-              
-              {profileData.coverPhoto && (
-                <button
-                  type="button"
-                  onClick={() => handleDeleteImage('cover')}
-                  className="flex items-center justify-center px-4 py-2 bg-red-500/20 backdrop-blur-sm rounded-lg text-white text-sm font-medium hover:bg-red-500/40 transition-colors"
-                  disabled={uploadingImage}
-                >
-                  <TrashIcon className="w-5 h-5 mr-2" />
-                  Delete Cover Photo
-                </button>
-              )}
-            </div>
-          )}
-        </div>
+      {/* Hidden file inputs */}
+      <input
+        type="file"
+        ref={profileImageInputRef}
+        className="hidden"
+        accept="image/*"
+        onChange={(e) => handleImageUpload(e, 'profile')}
+      />
+      <input
+        type="file"
+        ref={coverImageInputRef}
+        className="hidden"
+        accept="image/*"
+        onChange={(e) => handleImageUpload(e, 'cover')}
+      />
 
-        <div className="relative w-32 h-32 rounded-full border-4 border-white shadow-lg bg-gray-300 absolute top-32 left-1/2 transform -translate-x-1/2 overflow-hidden flex items-center justify-center group">
-          {profileData.profilePicture ? (
-            <img
-              src={profileData.profilePicture}
-              alt="Profile"
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <UserCircleIcon className="w-24 h-24 text-gray-500" />
-          )}
-          
-          {isEditing && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-white">
-              <label
-                htmlFor="profile-upload"
-                className="flex items-center justify-center cursor-pointer px-3 py-1 bg-white/10 backdrop-blur-sm rounded-lg text-white text-xs font-medium hover:bg-white/20 transition-colors mb-2"
-              >
-                <CameraIcon className="w-4 h-4 mr-1" />
-                Change
-                <input
-                  id="profile-upload"
-                  type="file"
-                  ref={profileImageInputRef}
-                  className="hidden"
-                  accept="image/*"
-                  onChange={(e) => handleImageUpload(e, 'profile')}
-                  disabled={uploadingImage}
-                />
-              </label>
-              
-              {profileData.profilePicture && (
-                <button
-                  type="button"
-                  onClick={() => handleDeleteImage('profile')}
-                  className="flex items-center justify-center px-3 py-1 bg-red-500/20 backdrop-blur-sm rounded-lg text-white text-xs font-medium hover:bg-red-500/40 transition-colors"
-                  disabled={uploadingImage}
-                >
-                  <TrashIcon className="w-4 h-4 mr-1" />
-                  Delete
-                </button>
-              )}
-            </div>
-          )}
-          {isEditing && (
-            <label
-              htmlFor="profile-upload"
-              className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 cursor-pointer text-white"
-            >
-              <PhotoIcon className="w-8 h-8 mr-2" />
-              Upload Photo
-              <input
-                id="profile-upload"
-                type="file"
-                ref={profileImageInputRef}
-                className="hidden"
-                accept="image/*"
-                onChange={(e) => handleImageUpload(e, 'profile')}
-                disabled={uploadingImage}
-              />
-            </label>
-          )}
-        </div>
-
-        <div className="text-center mt-6">
-          <div className="flex justify-between items-start">
-            <div>
-              <h1 className="text-3xl font-bold text-white">
-                {profileData.name || (isEditing ? 'Your Name' : null)}
-              </h1>
-              {(profileData.title || isEditing) && (
-                <p className="mt-1 text-gray-300">
-                  {profileData.title || (isEditing ? 'Add your title' : null)}
-                </p>
-              )}
-              {(profileData.location || isEditing) && (
-                <p className="text-gray-300">
-                  {profileData.location || (isEditing ? 'Add your location' : null)}
-                </p>
-              )}
-              {(profileData.timezone || isEditing) && (
-                <p className="text-gray-300">
-                  {profileData.timezone || (isEditing ? 'Add your timezone' : null)}
-                </p>
-              )}
-            </div>
-            {!userId && (
-              <button
-                onClick={() => setIsEditing(!isEditing)}
-                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-800 transition-colors duration-200"
-              >
-                <PencilIcon className="h-4 w-4 mr-2" />
-                {isEditing ? 'Done Editing' : 'Edit Profile'}
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Profile Content */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {/* Left Column */}
-          <div className="md:col-span-2 space-y-8">
-            {/* Bio */}
-            <div className="bg-gray-800/50 rounded-xl shadow-sm p-6 border border-gray-700">
-              <div className="flex items-center mb-4">
-                <UserCircleIcon className="h-6 w-6 text-blue-500 mr-3" />
-                <h2 className="text-xl font-semibold text-white">About</h2>
-              </div>
-              {isEditing ? (
-                <textarea
-                  name="bio"
-                  value={profileData.bio}
-                  onChange={handleInputChange}
-                  rows={4}
-                  className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Tell us about yourself"
-                />
-              ) : (
-                profileData.bio ? (
-                  <p className="text-gray-300 whitespace-pre-wrap">
-                    {profileData.bio}
-                  </p>
-                ) : (
-                  <p className="text-gray-500">No bio provided.</p>
-                )
-              )}
-            </div>
-
-            {/* Skills */}
-            <div className="bg-gray-800/50 rounded-xl shadow-sm p-6 border border-gray-700">
-              <div className="flex items-center mb-4">
-                <CodeBracketIcon className="h-6 w-6 text-blue-500 mr-3" />
-                <h2 className="text-xl font-semibold text-white">Technical Skills</h2>
-              </div>
-              {isEditing ? (
-                <div className="space-y-4">
-                  {profileData.technicalSkills.map((skill: Skill, index: number) => (
-                    <div key={index} className="relative">
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 relative">
-                          <input
-                            type="text"
-                            value={skillInputs[index] || skill.name}
-                            onChange={(e) => handleSkillInputChange(e, index)}
-                            className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white placeholder-gray-400"
-                            placeholder="Start typing a skill..."
-                          />
-                          {activeSkillIndex === index && skillSuggestions.length > 0 && (
-                            <div className="absolute z-10 w-full mt-1 bg-gray-700 border border-gray-600 rounded-md shadow-lg">
-                              {skillSuggestions.map((suggestion, i) => (
-                                <div
-                                  key={i}
-                                  className="px-4 py-2 text-gray-300 hover:bg-gray-600 cursor-pointer"
-                                  onClick={() => handleSkillSuggestionClick(suggestion)}
-                                >
-                                  {suggestion}
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                        <select
-                          value={skill.category}
-                          onChange={(e) => {
-                            const newSkills = [...profileData.technicalSkills];
-                            newSkills[index].category = e.target.value as Skill['category'];
-                            setProfileData((prev: UserProfileData) => ({ ...prev, technicalSkills: newSkills }));
-                          }}
-                          className="px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white"
-                        >
-                          <option value="frontend">Frontend</option>
-                          <option value="backend">Backend</option>
-                          <option value="ml">ML</option>
-                          <option value="design">Design</option>
-                          <option value="devops">DevOps</option>
-                          <option value="other">Other</option>
-                        </select>
-                        <select
-                          value={skill.proficiency}
-                          onChange={(e) => {
-                            const newSkills = [...profileData.technicalSkills];
-                            newSkills[index].proficiency = e.target.value as Skill['proficiency'];
-                            setProfileData((prev: UserProfileData) => ({ ...prev, technicalSkills: newSkills }));
-                          }}
-                          className="px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white"
-                        >
-                          <option value="beginner">Beginner</option>
-                          <option value="intermediate">Intermediate</option>
-                          <option value="advanced">Advanced</option>
-                          <option value="expert">Expert</option>
-                        </select>
-                        <button
-                          onClick={() => {
-                            const newSkills = profileData.technicalSkills.filter((_: Skill, i: number) => i !== index);
-                            setProfileData((prev: UserProfileData) => ({ ...prev, technicalSkills: newSkills }));
-                            setSkillInputs(prev => {
-                              const newInputs = { ...prev };
-                              delete newInputs[index];
-                              return newInputs;
-                            });
-                          }}
-                          className="text-red-400 hover:text-red-300"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                  <button
-                    onClick={() => {
-                      setProfileData((prev: UserProfileData) => ({
-                        ...prev,
-                        technicalSkills: [...prev.technicalSkills, { name: '', category: 'other', proficiency: 'beginner' }]
-                      }));
-                    }}
-                    className="text-blue-400 hover:text-blue-300"
-                  >
-                    + Add Skill
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {Object.entries(
-                    profileData.technicalSkills.reduce((acc: Record<string, Skill[]>, skill: Skill) => {
-                      if (!acc[skill.category]) acc[skill.category] = [];
-                      acc[skill.category].push(skill);
-                      return acc;
-                    }, {} as Record<string, Skill[]>)
-                  ).map(([category, skills]) => (
-                    <div key={category}>
-                      <h3 className="font-medium text-gray-300 capitalize mb-2">{category}</h3>
-                      <div className="flex flex-wrap gap-2">
-                        {(skills as Skill[]).map((skill: Skill, index: number) => (
-                          <span
-                            key={index}
-                            className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-600/20 text-blue-300"
-                          >
-                            {skill.name}
-                            <span className="ml-2 text-xs text-blue-400">({skill.proficiency})</span>
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Experience */}
-            <div className="bg-gray-800/50 rounded-xl shadow-sm p-6 border border-gray-700">
-              <div className="flex items-center mb-4">
-                <BriefcaseIcon className="h-6 w-6 text-blue-500 mr-3" />
-                <h2 className="text-xl font-semibold text-white">Experience</h2>
-              </div>
-              {isEditing ? (
-                <div className="space-y-4">
-                  {profileData.experiences.map((exp: Experience, index: number) => (
-                    <div key={index} className="border border-gray-600 rounded-lg p-4">
-                      <div className="grid grid-cols-2 gap-4 mb-4">
-                        <input
-                          type="text"
-                          value={exp.title}
-                          onChange={(e) => {
-                            const newExps = [...profileData.experiences];
-                            newExps[index].title = e.target.value;
-                            setProfileData((prev: UserProfileData) => ({ ...prev, experiences: newExps }));
-                          }}
-                          className="px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white placeholder-gray-400"
-                          placeholder="Title"
-                        />
-                        <input
-                          type="text"
-                          value={exp.company}
-                          onChange={(e) => {
-                            const newExps = [...profileData.experiences];
-                            newExps[index].company = e.target.value;
-                            setProfileData((prev: UserProfileData) => ({ ...prev, experiences: newExps }));
-                          }}
-                          className="px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white placeholder-gray-400"
-                          placeholder="Company"
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-4 mb-4">
-                        <input
-                          type="text"
-                          value={exp.startDate}
-                          onChange={(e) => {
-                            const newExps = [...profileData.experiences];
-                            newExps[index].startDate = e.target.value;
-                            setProfileData((prev: UserProfileData) => ({ ...prev, experiences: newExps }));
-                          }}
-                          className="px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white placeholder-gray-400"
-                          placeholder="Start Date"
-                        />
-                        <input
-                          type="text"
-                          value={exp.endDate}
-                          onChange={(e) => {
-                            const newExps = [...profileData.experiences];
-                            newExps[index].endDate = e.target.value;
-                            setProfileData((prev: UserProfileData) => ({ ...prev, experiences: newExps }));
-                          }}
-                          className="px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white placeholder-gray-400"
-                          placeholder="End Date"
-                        />
-                      </div>
-                      <textarea
-                        value={exp.description}
-                        onChange={(e) => {
-                          const newExps = [...profileData.experiences];
-                          newExps[index].description = e.target.value;
-                          setProfileData((prev: UserProfileData) => ({ ...prev, experiences: newExps }));
-                        }}
-                        rows={3}
-                        className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white placeholder-gray-400 mb-4"
-                        placeholder="Description"
-                      />
-                      <div className="flex justify-end">
-                        <button
-                          onClick={() => {
-                            const newExps = profileData.experiences.filter((_: Experience, i: number) => i !== index);
-                            setProfileData((prev: UserProfileData) => ({ ...prev, experiences: newExps }));
-                          }}
-                          className="text-red-400 hover:text-red-300"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                  <button
-                    onClick={() => {
-                      setProfileData((prev: UserProfileData) => ({
-                        ...prev,
-                        experiences: [...prev.experiences, {
-                          id: Date.now().toString(),
-                          title: '',
-                          company: '',
-                          startDate: '',
-                          endDate: '',
-                          description: '',
-                          technologies: [],
-                          type: 'work'
-                        }]
-                      }));
-                    }}
-                    className="text-blue-400 hover:text-blue-300"
-                  >
-                    + Add Experience
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-6">
-                  {profileData.experiences.map((exp: Experience, index: number) => (
-                    <div key={index} className="border-l-4 border-blue-500 pl-4">
-                      <h3 className="font-semibold text-white">{exp.title}</h3>
-                      <p className="text-gray-300">{exp.company}</p>
-                      <p className="text-sm text-gray-400">{exp.startDate} - {exp.endDate}</p>
-                      <p className="mt-2 text-gray-300">{exp.description}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Projects */}
-            <div className="bg-gray-800/50 rounded-xl shadow-sm p-6 border border-gray-700">
-              <div className="flex items-center mb-4">
-                <CodeBracketIcon className="h-6 w-6 text-blue-500 mr-3" />
-                <h2 className="text-xl font-semibold text-white">Projects</h2>
-              </div>
-              {isEditing ? (
-                <div className="space-y-4">
-                  {profileData.projects.map((project: Project, index: number) => (
-                    <div key={index} className="border border-gray-600 rounded-lg p-4">
-                      <input
-                        type="text"
-                        value={project.name}
-                        onChange={(e) => {
-                          const newProjects = [...profileData.projects];
-                          newProjects[index].name = e.target.value;
-                          setProfileData((prev: UserProfileData) => ({ ...prev, projects: newProjects }));
-                        }}
-                        className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white placeholder-gray-400 mb-4"
-                        placeholder="Project Name"
-                      />
-                      <textarea
-                        value={project.description}
-                        onChange={(e) => {
-                          const newProjects = [...profileData.projects];
-                          newProjects[index].description = e.target.value;
-                          setProfileData((prev: UserProfileData) => ({ ...prev, projects: newProjects }));
-                        }}
-                        rows={3}
-                        className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white placeholder-gray-400 mb-4"
-                        placeholder="Project Description"
-                      />
-                      <div className="grid grid-cols-2 gap-4 mb-4">
-                        <input
-                          type="text"
-                          value={project.role}
-                          onChange={(e) => {
-                            const newProjects = [...profileData.projects];
-                            newProjects[index].role = e.target.value;
-                            setProfileData((prev: UserProfileData) => ({ ...prev, projects: newProjects }));
-                          }}
-                          className="px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white placeholder-gray-400"
-                          placeholder="Your Role"
-                        />
-                        <input
-                          type="text"
-                          value={project.technologies.join(', ')}
-                          onChange={(e) => {
-                            const newProjects = [...profileData.projects];
-                            newProjects[index].technologies = e.target.value.split(',').map(t => t.trim());
-                            setProfileData((prev: UserProfileData) => ({ ...prev, projects: newProjects }));
-                          }}
-                          className="px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white placeholder-gray-400"
-                          placeholder="Technologies (comma-separated)"
-                        />
-                      </div>
-                      <div className="flex justify-end">
-                        <button
-                          onClick={() => {
-                            const newProjects = profileData.projects.filter((_: Project, i: number) => i !== index);
-                            setProfileData((prev: UserProfileData) => ({ ...prev, projects: newProjects }));
-                          }}
-                          className="text-red-400 hover:text-red-300"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                  <button
-                    onClick={() => {
-                      setProfileData((prev: UserProfileData) => ({
-                        ...prev,
-                        projects: [...prev.projects, {
-                          id: Date.now().toString(),
-                          name: '',
-                          description: '',
-                          technologies: [],
-                          role: '',
-                          startDate: '',
-                          endDate: ''
-                        }]
-                      }));
-                    }}
-                    className="text-blue-400 hover:text-blue-300"
-                  >
-                    + Add Project
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-6">
-                  {profileData.projects.map((project: Project, index: number) => (
-                    <div key={index} className="border-l-4 border-blue-500 pl-4">
-                      <h3 className="font-semibold text-white">{project.name}</h3>
-                      <p className="text-gray-300">{project.description}</p>
-                      <p className="text-sm text-gray-400">Role: {project.role}</p>
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {project.technologies.map((tech: string, techIndex: number) => (
-                          <span
-                            key={techIndex}
-                            className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-700 text-gray-300"
-                          >
-                            {tech}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Right Column */}
-          <div className="space-y-8">
-            {/* Education */}
-            <div className="bg-gray-800/50 rounded-xl shadow-sm p-6 border border-gray-700">
-              <div className="flex items-center mb-4">
-                <AcademicCapIcon className="h-6 w-6 text-blue-500 mr-3" />
-                <h2 className="text-xl font-semibold text-white">Education</h2>
-              </div>
-              {isEditing ? (
-                <div className="space-y-4">
-                  {profileData.education.map((edu: Education, index: number) => (
-                    <div key={index} className="border border-gray-600 rounded-lg p-4">
-                      <input
-                        type="text"
-                        value={edu.institution}
-                        onChange={(e) => {
-                          const newEdu = [...profileData.education];
-                          newEdu[index].institution = e.target.value;
-                          setProfileData((prev: UserProfileData) => ({ ...prev, education: newEdu }));
-                        }}
-                        className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white placeholder-gray-400 mb-4"
-                        placeholder="Institution"
-                      />
-                      <div className="grid grid-cols-2 gap-4 mb-4">
-                        <input
-                          type="text"
-                          value={edu.degree}
-                          onChange={(e) => {
-                            const newEdu = [...profileData.education];
-                            newEdu[index].degree = e.target.value;
-                            setProfileData((prev: UserProfileData) => ({ ...prev, education: newEdu }));
-                          }}
-                          className="px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white placeholder-gray-400"
-                          placeholder="Degree"
-                        />
-                        <input
-                          type="text"
-                          value={edu.major}
-                          onChange={(e) => {
-                            const newEdu = [...profileData.education];
-                            newEdu[index].major = e.target.value;
-                            setProfileData((prev: UserProfileData) => ({ ...prev, education: newEdu }));
-                          }}
-                          className="px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white placeholder-gray-400"
-                          placeholder="Major"
-                        />
-                      </div>
-                      <div className="flex justify-end">
-                        <button
-                          onClick={() => {
-                            const newEdu = profileData.education.filter((_: Education, i: number) => i !== index);
-                            setProfileData((prev: UserProfileData) => ({ ...prev, education: newEdu }));
-                          }}
-                          className="text-red-400 hover:text-red-300"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                  <button
-                    onClick={() => {
-                      setProfileData((prev: UserProfileData) => ({
-                        ...prev,
-                        education: [...prev.education, {
-                          id: Date.now().toString(),
-                          institution: '',
-                          degree: '',
-                          major: '',
-                          startDate: '',
-                          endDate: '',
-                          relevantCoursework: []
-                        }]
-                      }));
-                    }}
-                    className="text-blue-400 hover:text-blue-300"
-                  >
-                    + Add Education
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {profileData.education.map((edu: Education, index: number) => (
-                    <div key={index} className="border-l-4 border-blue-500 pl-4">
-                      <h3 className="font-semibold text-white">{edu.institution}</h3>
-                      <p className="text-gray-300">{edu.degree} in {edu.major}</p>
-                      <p className="text-sm text-gray-400">{edu.startDate} - {edu.endDate}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Links */}
-            <div className="bg-gray-800/50 rounded-xl shadow-sm p-6 border border-gray-700">
-              <div className="flex items-center mb-4">
-                <LinkIcon className="h-6 w-6 text-blue-500 mr-3" />
-                <h2 className="text-xl font-semibold text-white">Links</h2>
-              </div>
-              {isEditing ? (
-                <div className="space-y-4">
-                  {Object.entries(profileData.links).map(([platform, url], index) => {
-                    const typedUrl = url as string | string[];
-                    return (
-                      <div key={index} className="flex items-center gap-2">
-                        <input
-                          type="text"
-                          value={typeof typedUrl === 'string' ? typedUrl : typedUrl[0]}
-                          onChange={(e) => {
-                            setProfileData((prev: UserProfileData) => ({
-                              ...prev,
-                              links: { ...prev.links, [platform]: e.target.value }
-                            }));
-                          }}
-                          className="flex-1 px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white placeholder-gray-400"
-                          placeholder={`${platform} URL`}
-                        />
-                        <button
-                          onClick={() => {
-                            const newLinks = { ...profileData.links };
-                            delete newLinks[platform as keyof typeof profileData.links];
-                            setProfileData((prev: UserProfileData) => ({ ...prev, links: newLinks }));
-                          }}
-                          className="text-red-400 hover:text-red-300"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    );
-                  })}
-                  <button
-                    onClick={() => {
-                      const platform = prompt('Enter platform name (e.g., github, linkedin):');
-                      if (platform) {
-                        setProfileData((prev: UserProfileData) => ({
-                          ...prev,
-                          links: { ...prev.links, [platform]: '' }
-                        }));
-                      }
-                    }}
-                    className="text-blue-400 hover:text-blue-300"
-                  >
-                    + Add Link
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {Object.entries(profileData.links).map(([platform, url], index) => {
-                    const typedUrl = url as string | string[];
-                    return (
-                      <a
-                        key={index}
-                        href={typeof typedUrl === 'string' ? typedUrl : typedUrl[0]}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center text-blue-400 hover:text-blue-300"
-                      >
-                        <span className="capitalize">{platform}</span>
-                        <LinkIcon className="h-4 w-4 ml-2" />
-                      </a>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Save Button */}
-        {isEditing && (
-          <div className="mt-8 flex justify-end">
-            <button
-              onClick={handleSubmit}
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-800"
-            >
-              Save Changes
-            </button>
-          </div>
-        )}
-      </div>
+      {/* Edit Profile Modal */}
+      {isEditing && (
+        <EditProfileForm
+          initialData={profileData}
+          onSave={handleSave}
+          onCancel={() => setIsEditing(false)}
+        />
+      )}
     </div>
   );
 };

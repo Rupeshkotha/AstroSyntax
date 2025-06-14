@@ -8,6 +8,7 @@ import {
   BookOpenIcon,
   UserCircleIcon,
   ChartBarIcon,
+  ChatBubbleLeftRightIcon,
 } from '@heroicons/react/24/outline';
 
 interface NavItem {
@@ -20,6 +21,7 @@ const navigation: NavItem[] = [
   { name: 'Overview', path: '/dashboard', icon: HomeIcon },
   { name: 'My Projects', path: '/dashboard/projects', icon: ChartBarIcon },
   { name: 'Team Hub', path: '/teams', icon: UserGroupIcon },
+  { name: 'Discussions', path: '/discussions', icon: ChatBubbleLeftRightIcon },
   { name: 'Idea Generator', path: '/dashboard/idea-generator', icon: LightBulbIcon },
   { name: 'Hackathons', path: '/hackathons', icon: CalendarIcon },
   { name: 'Resources', path: '/dashboard/resources', icon: BookOpenIcon },

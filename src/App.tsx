@@ -13,6 +13,7 @@ import AdminHackathons from './pages/AdminHackathons';
 import ProtectedRoute from './components/ProtectedRoute';
 import DashboardLayout from './components/layout/DashboardLayout';
 import Resources from './pages/Resources';
+import Discussions from './pages/Discussions';
 import './App.css';
 
 const App: React.FC = () => {
@@ -81,6 +82,14 @@ const App: React.FC = () => {
           element={
             <ProtectedRoute>
               <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/discussions"
+          element={
+            <ProtectedRoute>
+              <Discussions />
             </ProtectedRoute>
           }
         />

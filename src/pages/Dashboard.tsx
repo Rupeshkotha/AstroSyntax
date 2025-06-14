@@ -8,6 +8,7 @@ import {
   CalendarIcon,
   BookOpenIcon,
   BellIcon,
+  ChatBubbleLeftRightIcon,
 } from '@heroicons/react/24/outline';
 import IncomingRequests from '../components/IncomingRequests';
 import { Link } from 'react-router-dom';
@@ -141,6 +142,18 @@ const Dashboard: React.FC = () => {
                   <span className="text-text">Project Presentation Templates</span>
                 </a>
               </div>
+            </div>
+          </div>
+
+          {/* Discussions */}
+          <div className="card glass border border-white/10">
+            <div className="p-6">
+              <h2 className="text-xl font-semibold text-text mb-4">Discussions</h2>
+              <p className="text-text-secondary mb-6">Join the conversation! Ask questions, share ideas, and connect with other hackers.</p>
+              <Link to="/discussions" className="btn btn-primary">
+                <ChatBubbleLeftRightIcon className="w-5 h-5 mr-2" />
+                View Discussions
+              </Link>
             </div>
           </div>
         </div>
