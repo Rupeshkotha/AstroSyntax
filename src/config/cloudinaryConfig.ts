@@ -1,0 +1,1 @@
+export const CLOUDINARY_CLOUD_NAME = 'dkm53hnhx'; 

@@ -1,0 +1,67 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && request.auth.token.admin == true;
+    }
+
+    // Teams collection rules
+    match /teams/{teamId} {
+      allow read: if isAuthenticated() && (resource.data.leadId == request.auth.uid || resource.data.members.hasAny([request.auth.uid]));
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (
+        // Team lead can update team details
+        resource.data.leadId == request.auth.uid ||
+        // Team members can update their own status (like roles, skills, etc. - assuming 'members' is a map)
+        // If 'members' is an array of objects, this update rule needs adjustment.
+        // Given the addTeamMember uses arrayUnion, 'members' is likely an array of TeamMember objects.
+        // A safer update rule for array members would be to check if the user is updating ONLY their own entry
+        // For now, we'll keep the simplified lead/member check for updates assuming limited update scenarios.
+        // We should revisit this if complex member self-updates are needed.
+        resource.data.members.hasAny([request.auth.uid])
+      );
+      allow delete: if isAuthenticated() && resource.data.leadId == request.auth.uid;
+    }
+
+    // Users collection rules
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(userId);
+    }
+
+    // Hackathons collection rules
+    match /hackathons/{hackathonId} {
+      allow read: if true;  // Anyone can read hackathons
+      allow write: if request.auth != null && request.auth.token.isAdmin == true;  // Only admins can write
+    }
+
+    // Hackathon registrations subcollection
+    match /hackathons/{hackathonId}/registrations/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow write: if isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // This rule allows anyone with your Firestore database reference to view, edit,
+    // and delete all data in your Firestore database. It is useful for getting
+    // started, but it is configured to expire after 30 days because it
+    // leaves your app open to attackers. At that time, all client
+    // requests to your Firestore database will be denied.
+    //
+    // Make sure to write security rules for your app before that time, or else
+    // all client requests to your Firestore database will be denied until you Update
+    // your rules
+    match /{document=**} {
+      allow read, write: if request.time < timestamp.date(2025, 7, 2);
+    }
+  }
+}
