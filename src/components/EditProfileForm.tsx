@@ -359,13 +359,34 @@ const addEducation = () => {
   };
 
   const addLink = () => {
-    const platform = prompt('Enter platform name (e.g., github, linkedin):');
-    if (platform) {
-      setFormData(prev => ({
-        ...prev,
-        links: { ...prev.links, [platform]: '' }
-      }));
-    }
+    const newLinkKey = `new-link-${new Date().getTime()}`;
+    setFormData(prev => ({
+      ...prev,
+      links: { ...prev.links, [newLinkKey]: '' } // Add a unique key for the new link
+    }));
+  };
+
+  const handleAddLink = () => {
+    addLink();
+  };
+
+  const handleDeleteLink = (platformToDelete: string) => {
+    setFormData(prev => {
+      const newLinks = { ...prev.links };
+      delete newLinks[platformToDelete as keyof typeof newLinks];
+      return { ...prev, links: newLinks };
+    });
+  };
+
+  const handleLinkChange = (platform: string, newPlatform: string, newUrl: string) => {
+    setFormData(prev => {
+      const newLinks = { ...prev.links };
+      if (platform !== newPlatform) {
+        delete newLinks[platform as keyof typeof newLinks];
+      }
+      newLinks[newPlatform] = newUrl;
+      return { ...prev, links: newLinks };
+    });
   };
 
   if (loading) {
@@ -1008,51 +1029,38 @@ const addEducation = () => {
       <div className="bg-gray-800/50 rounded-xl p-6 space-y-4 border border-gray-700">
         <h2 className="text-2xl font-bold text-white">Social Links</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="flex items-center gap-2">
-            <label className="block text-sm font-medium text-gray-300 w-24">GitHub:</label>
-            <input
-              type="text"
-              value={formData.links.github || ''}
-              onChange={(e) => {
-                setFormData(prev => ({
-                  ...prev,
-                  links: { ...prev.links, github: e.target.value }
-                }));
-              }}
-              className="flex-1 px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white placeholder-gray-400"
-              placeholder="https://github.com/username"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <label className="block text-sm font-medium text-gray-300 w-24">LinkedIn:</label>
-            <input
-              type="text"
-              value={formData.links.linkedin || ''}
-              onChange={(e) => {
-                setFormData(prev => ({
-                  ...prev,
-                  links: { ...prev.links, linkedin: e.target.value }
-                }));
-              }}
-              className="flex-1 px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white placeholder-gray-400"
-              placeholder="https://linkedin.com/in/username"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <label className="block text-sm font-medium text-gray-300 w-24">Twitter:</label>
-            <input
-              type="text"
-              value={formData.links.twitter || ''}
-              onChange={(e) => {
-                setFormData(prev => ({
-                  ...prev,
-                  links: { ...prev.links, twitter: e.target.value }
-                }));
-              }}
-              className="flex-1 px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white placeholder-gray-400"
-              placeholder="https://twitter.com/username"
-            />
-          </div>
+          {Object.entries(formData.links).map(([platform, url], index) => (
+            <div key={platform} className="flex items-center gap-3">
+              <input
+                type="text"
+                value={platform}
+                onChange={(e) => handleLinkChange(platform, e.target.value, url as string)}
+                className="w-1/3 px-4 py-3 bg-slate-700/30 border border-slate-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors duration-200 hover:border-purple-500"
+                placeholder="Platform (e.g., github)"
+              />
+              <input
+                type="text"
+                value={url as string}
+                onChange={(e) => handleLinkChange(platform, platform, e.target.value)}
+                className="flex-1 px-4 py-3 bg-slate-700/30 border border-slate-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors duration-200 hover:border-purple-500"
+                placeholder="URL"
+              />
+              <button
+                type="button"
+                onClick={() => handleDeleteLink(platform)}
+                className="p-3 text-red-400 hover:text-red-300 transition-colors transform hover:scale-105"
+              >
+                <XMarkIcon className="h-5 w-5" />
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={addLink}
+            className="flex items-center px-4 py-2 bg-purple-500/20 text-purple-400 rounded-xl hover:bg-purple-500/30 transition-colors transform hover:scale-105"
+          >
+            <span className="mr-2">+</span> Add Link
+          </button>
         </div>
       </div>
 

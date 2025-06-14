@@ -82,6 +82,7 @@ export interface UserProfileData {
   projects: Project[];
   hackathons: Hackathon[];
   links: {
+    [key: string]: string | string[] | undefined; // Allow any string key with string, string[], or undefined value
     github?: string;
     linkedin?: string;
     portfolio?: string;
