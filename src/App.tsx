@@ -14,6 +14,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import DashboardLayout from './components/layout/DashboardLayout';
 import Resources from './pages/Resources';
 import Discussions from './pages/Discussions';
+import Messages from './pages/Messages';
 import './App.css';
 
 const App: React.FC = () => {
@@ -74,6 +75,14 @@ const App: React.FC = () => {
             <ProtectedRoute>
               <Navbar />
               <Profile />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/messages"
+          element={
+            <ProtectedRoute>
+              <Messages />
             </ProtectedRoute>
           }
         />

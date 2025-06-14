@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import DashboardLayout from '../components/layout/DashboardLayout';
-import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, updateDoc, arrayUnion, getDoc, deleteDoc, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
@@ -12,7 +12,8 @@ import {
   FaceSmileIcon,
   FireIcon,
   StarIcon,
-  SparklesIcon
+  SparklesIcon,
+  TrashIcon
 } from '@heroicons/react/24/outline';
 import { 
   HandThumbUpIcon as HandThumbUpSolidIcon,
@@ -37,7 +38,6 @@ interface Discussion {
   authorId: string;
   timestamp: any;
   reactions: Reaction[];
-  replies: Reply[];
 }
 
 interface Reply {
@@ -62,8 +62,10 @@ const reactionTypes = [
 const Discussions: React.FC = () => {
   const { currentUser } = useAuth();
   const [discussions, setDiscussions] = useState<Discussion[]>([]);
+  const [replies, setReplies] = useState<{ [key: string]: Reply[] }>({});
   const [newDiscussion, setNewDiscussion] = useState({ title: '', content: '' });
   const [newReply, setNewReply] = useState({ discussionId: '', content: '' });
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -78,18 +80,36 @@ const Discussions: React.FC = () => {
           author: data.author,
           authorId: data.authorId,
           timestamp: data.timestamp,
-          reactions: data.reactions || [],
-          replies: (data.replies || []).map((reply: any) => ({
-            ...reply,
-            authorId: reply.authorId
-          }))
+          reactions: data.reactions || []
         };
       }) as Discussion[];
       setDiscussions(discussionsData);
+
+      discussionsData.forEach(discussion => {
+        fetchReplies(discussion.id);
+      });
     });
 
     return () => unsubscribe();
   }, []);
+
+  const fetchReplies = (discussionId: string) => {
+    const repliesQuery = query(
+      collection(db, 'discussions', discussionId, 'replies'),
+      orderBy('timestamp', 'asc')
+    );
+
+    return onSnapshot(repliesQuery, (snapshot) => {
+      const repliesData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Reply[];
+      setReplies(prev => ({
+        ...prev,
+        [discussionId]: repliesData
+      }));
+    });
+  };
 
   const handleNewDiscussion = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -102,8 +122,7 @@ const Discussions: React.FC = () => {
         author: currentUser.displayName || 'Anonymous',
         authorId: currentUser.uid,
         timestamp: serverTimestamp(),
-        reactions: [],
-        replies: []
+        reactions: []
       };
 
       await addDoc(collection(db, 'discussions'), discussionData);
@@ -115,12 +134,10 @@ const Discussions: React.FC = () => {
 
   const handleNewReply = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentUser || !newReply.discussionId) return;
+    if (!currentUser || !replyingTo) return;
 
     try {
-      const discussionRef = doc(db, 'discussions', newReply.discussionId);
-      const reply = {
-        id: Date.now().toString(),
+      const replyData = {
         content: newReply.content,
         author: currentUser.displayName || 'Anonymous',
         authorId: currentUser.uid,
@@ -128,70 +145,74 @@ const Discussions: React.FC = () => {
         reactions: []
       };
 
-      await updateDoc(discussionRef, {
-        replies: arrayUnion(reply)
-      });
+      await addDoc(collection(db, 'discussions', replyingTo, 'replies'), replyData);
+
       setNewReply({ discussionId: '', content: '' });
+      setReplyingTo(null);
     } catch (error) {
       console.error('Error adding reply:', error);
     }
+  };
+
+  const startReply = (discussionId: string) => {
+    setReplyingTo(discussionId);
+    setNewReply({ discussionId, content: '' });
+  };
+
+  const cancelReply = () => {
+    setReplyingTo(null);
+    setNewReply({ discussionId: '', content: '' });
   };
 
   const handleReaction = async (discussionId: string, reactionType: string, replyId?: string) => {
     if (!currentUser) return;
 
     try {
-      const discussionRef = doc(db, 'discussions', discussionId);
-      const discussion = discussions.find(d => d.id === discussionId);
-      
-      if (!discussion) return;
-
       if (replyId) {
-        // React to a reply
-        const updatedReplies = discussion.replies.map(reply => {
-          if (reply.id === replyId) {
-            const reactions = [...reply.reactions];
-            const reactionIndex = reactions.findIndex(r => r.type === reactionType);
-            
-            if (reactionIndex === -1) {
-              reactions.push({ type: reactionType, users: [currentUser.uid] });
-            } else {
-              const reaction = reactions[reactionIndex];
-              if (reaction.users.includes(currentUser.uid)) {
-                reaction.users = reaction.users.filter(id => id !== currentUser.uid);
-                if (reaction.users.length === 0) {
-                  reactions.splice(reactionIndex, 1);
-                }
-              } else {
-                reaction.users.push(currentUser.uid);
-              }
-            }
-            return { ...reply, reactions };
-          }
-          return reply;
-        });
-
-        await updateDoc(discussionRef, { replies: updatedReplies });
-      } else {
-        // React to a discussion
-        const reactions = [...discussion.reactions];
-        const reactionIndex = reactions.findIndex(r => r.type === reactionType);
+        const replyRef = doc(db, 'discussions', discussionId, 'replies', replyId);
+        const replyDoc = await getDoc(replyRef);
         
+        if (!replyDoc.exists()) return;
+
+        const reply = replyDoc.data();
+        const reactions = [...(reply.reactions || [])];
+        
+        reactions.forEach(reaction => {
+          reaction.users = reaction.users.filter((id: string) => id !== currentUser.uid);
+        });
+        
+        const filteredReactions = reactions.filter(reaction => reaction.users.length > 0);
+        
+        const reactionIndex = filteredReactions.findIndex(r => r.type === reactionType);
         if (reactionIndex === -1) {
-          reactions.push({ type: reactionType, users: [currentUser.uid] });
+          filteredReactions.push({ type: reactionType, users: [currentUser.uid] });
         } else {
-          const reaction = reactions[reactionIndex];
-          if (reaction.users.includes(currentUser.uid)) {
-            reaction.users = reaction.users.filter(id => id !== currentUser.uid);
-            if (reaction.users.length === 0) {
-              reactions.splice(reactionIndex, 1);
-            }
-          } else {
-            reaction.users.push(currentUser.uid);
-          }
+          filteredReactions[reactionIndex].users.push(currentUser.uid);
         }
 
-        await updateDoc(discussionRef, { reactions });
+        await updateDoc(replyRef, { reactions: filteredReactions });
+      } else {
+        const discussionRef = doc(db, 'discussions', discussionId);
+        const discussion = discussions.find(d => d.id === discussionId);
+        
+        if (!discussion) return;
+
+        const reactions = [...discussion.reactions];
+        
+        reactions.forEach(reaction => {
+          reaction.users = reaction.users.filter((id: string) => id !== currentUser.uid);
+        });
+        
+        const filteredReactions = reactions.filter(reaction => reaction.users.length > 0);
+        
+        const reactionIndex = filteredReactions.findIndex(r => r.type === reactionType);
+        if (reactionIndex === -1) {
+          filteredReactions.push({ type: reactionType, users: [currentUser.uid] });
+        } else {
+          filteredReactions[reactionIndex].users.push(currentUser.uid);
+        }
+
+        await updateDoc(discussionRef, { reactions: filteredReactions });
       }
     } catch (error) {
       console.error('Error updating reactions:', error);
@@ -218,20 +239,72 @@ const Discussions: React.FC = () => {
   };
 
   const UserLink: React.FC<{ userId: string; children: React.ReactNode }> = ({ userId, children }) => {
-    const handleClick = (e: React.MouseEvent) => {
-      e.preventDefault();
+    const navigate = useNavigate();
+
+    const handleProfileClick = (e: React.MouseEvent) => {
       e.stopPropagation();
       navigate(`/profile/${userId}`);
     };
 
     return (
       <button
-        onClick={handleClick}
-        className="text-blue-600 hover:text-blue-800 font-medium transition-colors"
+        onClick={handleProfileClick}
+        className="text-blue-600 hover:text-blue-800 font-medium"
       >
         {children}
       </button>
     );
+  };
+
+  // Handle delete discussion
+  const handleDeleteDiscussion = async (discussionId: string) => {
+    if (!currentUser) return;
+
+    try {
+      const discussionRef = doc(db, 'discussions', discussionId);
+      const discussionDoc = await getDoc(discussionRef);
+      
+      if (!discussionDoc.exists()) return;
+      
+      const discussion = discussionDoc.data();
+      if (discussion.authorId !== currentUser.uid) {
+        console.error('Only the author can delete this discussion');
+        return;
+      }
+
+      // Delete all replies in the subcollection
+      const repliesQuery = query(collection(db, 'discussions', discussionId, 'replies'));
+      const repliesSnapshot = await getDocs(repliesQuery);
+      const deletePromises = repliesSnapshot.docs.map(doc => deleteDoc(doc.ref));
+      await Promise.all(deletePromises);
+
+      // Delete the discussion
+      await deleteDoc(discussionRef);
+    } catch (error) {
+      console.error('Error deleting discussion:', error);
+    }
+  };
+
+  // Handle delete reply
+  const handleDeleteReply = async (discussionId: string, replyId: string) => {
+    if (!currentUser) return;
+
+    try {
+      const replyRef = doc(db, 'discussions', discussionId, 'replies', replyId);
+      const replyDoc = await getDoc(replyRef);
+      
+      if (!replyDoc.exists()) return;
+      
+      const reply = replyDoc.data();
+      if (reply.authorId !== currentUser.uid) {
+        console.error('Only the author can delete this reply');
+        return;
+      }
+
+      await deleteDoc(replyRef);
+    } catch (error) {
+      console.error('Error deleting reply:', error);
+    }
   };
 
   return (
@@ -259,7 +332,7 @@ const Discussions: React.FC = () => {
                 onChange={(e) => setNewDiscussion({ ...newDiscussion, content: e.target.value })}
                 required
               />
-              <button type="submit" className="btn btn-primary bg-blue-600 hover:bg-blue-700 text-white">
+              <button type="submit" className="btn btn-primary">
                 Post Discussion
               </button>
             </form>
@@ -271,7 +344,18 @@ const Discussions: React.FC = () => {
           {discussions.map((discussion) => (
             <div key={discussion.id} className="bg-white rounded-lg shadow-sm border border-gray-200">
               <div className="p-6">
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">{discussion.title}</h3>
+                <div className="flex justify-between items-start mb-4">
+                  <h3 className="text-xl font-semibold text-gray-900">{discussion.title}</h3>
+                  {currentUser?.uid === discussion.authorId && (
+                    <button
+                      onClick={() => handleDeleteDiscussion(discussion.id)}
+                      className="text-red-600 hover:text-red-800 p-1 rounded-full hover:bg-red-50"
+                      title="Delete discussion"
+                    >
+                      <TrashIcon className="h-5 w-5" />
+                    </button>
+                  )}
+                </div>
                 <p className="text-gray-700 mb-4">{discussion.content}</p>
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
@@ -280,7 +364,7 @@ const Discussions: React.FC = () => {
                     </UserLink>
                     <span className="text-gray-500">•</span>
                     <span className="text-gray-500 text-sm">
-                      {new Date(discussion.timestamp).toLocaleDateString()}
+                      {new Date(discussion.timestamp?.toDate?.() || discussion.timestamp).toLocaleDateString()}
                     </span>
                   </div>
                   <div className="flex space-x-2">
@@ -301,12 +385,64 @@ const Discussions: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Replies */}
+                {/* Replies Section */}
                 <div className="space-y-4 mt-6">
-                  <h4 className="font-semibold text-gray-900">Replies</h4>
-                  {discussion.replies.map((reply) => (
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-semibold text-gray-900">Replies</h4>
+                    <button
+                      onClick={() => startReply(discussion.id)}
+                      className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                    >
+                      Reply
+                    </button>
+                  </div>
+
+                  {/* Reply Form */}
+                  {replyingTo === discussion.id && (
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <form onSubmit={handleNewReply}>
+                        <textarea
+                          placeholder="Write your reply..."
+                          className="textarea textarea-bordered w-full mb-4 bg-white text-gray-900 placeholder-gray-500"
+                          value={newReply.content}
+                          onChange={(e) => setNewReply({ ...newReply, content: e.target.value })}
+                          required
+                        />
+                        <div className="flex justify-end space-x-2">
+                          <button
+                            type="button"
+                            onClick={cancelReply}
+                            className="btn btn-ghost"
+                          >
+                            Cancel
+                          </button>
+                          <button 
+                            type="submit" 
+                            className="btn btn-primary"
+                            disabled={!newReply.content.trim()}
+                          >
+                            Post Reply
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+                  )}
+
+                  {/* Replies List */}
+                  {replies[discussion.id]?.map((reply) => (
                     <div key={reply.id} className="pl-4 border-l-2 border-gray-200">
-                      <p className="text-gray-700 mb-2">{reply.content}</p>
+                      <div className="flex justify-between items-start mb-2">
+                        <p className="text-gray-700">{reply.content}</p>
+                        {currentUser?.uid === reply.authorId && (
+                          <button
+                            onClick={() => handleDeleteReply(discussion.id, reply.id)}
+                            className="text-red-600 hover:text-red-800 p-1 rounded-full hover:bg-red-50 ml-2"
+                            title="Delete reply"
+                          >
+                            <TrashIcon className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <UserLink userId={reply.authorId}>
@@ -314,7 +450,7 @@ const Discussions: React.FC = () => {
                           </UserLink>
                           <span className="text-gray-500">•</span>
                           <span className="text-gray-500 text-sm">
-                            {new Date(reply.timestamp).toLocaleDateString()}
+                            {new Date(reply.timestamp?.toDate?.() || reply.timestamp).toLocaleDateString()}
                           </span>
                         </div>
                         <div className="flex space-x-2">
@@ -336,20 +472,6 @@ const Discussions: React.FC = () => {
                       </div>
                     </div>
                   ))}
-
-                  {/* Reply Form */}
-                  <form onSubmit={handleNewReply} className="mt-4">
-                    <textarea
-                      placeholder="Write a reply..."
-                      className="textarea textarea-bordered w-full mb-2 bg-gray-50 text-gray-900 placeholder-gray-500"
-                      value={newReply.discussionId === discussion.id ? newReply.content : ''}
-                      onChange={(e) => setNewReply({ discussionId: discussion.id, content: e.target.value })}
-                      required
-                    />
-                    <button type="submit" className="btn btn-primary btn-sm bg-blue-600 hover:bg-blue-700 text-white">
-                      Reply
-                    </button>
-                  </form>
                 </div>
               </div>
             </div>
