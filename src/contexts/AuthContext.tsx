@@ -33,14 +33,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (user) {
-        // Fetch custom user data from Firestore to get isAdmin status
+        let mergedUser: AuthUser = { ...user }; // Start with all properties from the Firebase User object
+
         const userDoc = await getDoc(doc(db, "users", user.uid));
         if (userDoc.exists()) {
-          setCurrentUser({ ...user, ...userDoc.data() as { isAdmin: boolean } });
-        } else {
-          setCurrentUser(user);
+          const firestoreData = userDoc.data();
+          // Merge Firestore data, overriding if present
+          mergedUser = { 
+            ...mergedUser, 
+            ...firestoreData as Partial<AuthUser> 
+          };
         }
+        
+        console.log("AuthContext: mergedUser before setting state", mergedUser);
+        setCurrentUser(mergedUser);
+
       } else {
+        console.log("AuthContext: No user logged in.");
         setCurrentUser(null);
       }
       setLoading(false);

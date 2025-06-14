@@ -9,6 +9,7 @@ import {
   CalendarIcon,
   BookOpenIcon,
   BellIcon,
+  ChatBubbleLeftRightIcon,
 } from '@heroicons/react/24/outline';
 import IncomingRequests from '../components/IncomingRequests';
 import { Link } from 'react-router-dom';
@@ -137,6 +138,10 @@ const Dashboard: React.FC = () => {
             <div className="p-6">
               <h2 className="text-xl font-semibold text-text mb-4">Quick Resources</h2>
               <div className="space-y-4">
+                <Link to="/dashboard/community" className="flex items-center p-3 rounded-lg hover:bg-white/5 transition-colors">
+                  <ChatBubbleLeftRightIcon className="w-5 h-5 text-text-secondary mr-3" />
+                  <span className="text-text">Community Hub</span>
+                </Link>
                 <a href="#" className="flex items-center p-3 rounded-lg hover:bg-white/5 transition-colors">
                   <BookOpenIcon className="w-5 h-5 text-text-secondary mr-3" />
                   <span className="text-text">Hackathon Preparation Guide</span>
