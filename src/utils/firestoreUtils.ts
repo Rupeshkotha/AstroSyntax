@@ -42,6 +42,24 @@ export interface Project {
   endDate: string;
   demoLink?: string;
   repoLink?: string;
+  hackathonName?: string;
+  hackathonOrganizer?: string;
+  teamSize?: number;
+  keyFeatures?: string[];
+  challenges?: string[];
+  placement?: string;
+  prize?: string;
+  devpostLink?: string;
+}
+
+export interface Hackathon {
+  id: string;
+  name: string;
+  organizer: string;
+  startDate: string;
+  endDate: string;
+  placement?: string;
+  prize?: string;
 }
 
 export interface UserProfileData {
@@ -62,6 +80,7 @@ export interface UserProfileData {
   experiences: Experience[];
   education: Education[];
   projects: Project[];
+  hackathons: Hackathon[];
   links: {
     github?: string;
     linkedin?: string;

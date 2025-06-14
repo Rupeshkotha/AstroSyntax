@@ -74,7 +74,7 @@ dist
 
 # Gatsby files
 .cache/
-public
+# public  # Commented out to allow public folder to be tracked
 
 # vuepress build output
 .vuepress/dist

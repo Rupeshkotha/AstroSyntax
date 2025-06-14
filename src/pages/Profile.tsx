@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { saveUserProfile, UserProfileData, uploadProfileImage } from '../utils/firestoreUtils';
+import { saveUserProfile, getUserProfileData, UserProfileData, uploadProfileImage } from '../utils/firestoreUtils';
 import EditProfileForm from '../components/EditProfileForm';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -19,6 +19,7 @@ import {
   PhotoIcon,
   CameraIcon,
   TrashIcon,
+  TrophyIcon,
 } from '@heroicons/react/24/outline';
 
 // Initialize Cloudinary
@@ -112,22 +113,30 @@ interface Project {
   repoLink?: string;
 }
 
+interface Hackathon {
+  id: string;
+  name: string;
+  organizer: string;
+  startDate: string;
+  endDate: string;
+  placement?: string;
+  prize?: string;
+}
+
 const Profile: React.FC = () => {
   const { currentUser } = useAuth();
   const { userId } = useParams();
   const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
   const [profileData, setProfileData] = useState<UserProfileData>({
-    id: currentUser?.uid || '',
+    id: '',
     name: '',
     title: '',
     bio: '',
     location: '',
     timezone: '',
-    email: currentUser?.email || '',
+    email: '',
     phone: '',
-    profilePicture: '',
-    coverPhoto: '',
     technicalSkills: [],
     softSkills: [],
     languages: [],
@@ -135,7 +144,8 @@ const Profile: React.FC = () => {
     experiences: [],
     education: [],
     projects: [],
-    links: {},
+    hackathons: [],
+    links: {}
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -159,8 +169,30 @@ const Profile: React.FC = () => {
         const userDoc = await getDoc(userDocRef);
         
         if (userDoc.exists()) {
-          const data = userDoc.data() as UserProfileData;
-          setProfileData(data);
+          const data = await getUserProfileData(targetUserId);
+          if (data) {
+            setProfileData(data);
+          } else {
+            setProfileData({
+              id: currentUser.uid || '',
+              name: '',
+              title: '',
+              bio: '',
+              location: '',
+              timezone: '',
+              email: currentUser.email || '',
+              phone: '',
+              technicalSkills: [],
+              softSkills: [],
+              languages: [],
+              tools: [],
+              experiences: [],
+              education: [],
+              projects: [],
+              hackathons: [],
+              links: {}
+            });
+          }
         } else {
           setProfileData({
             id: currentUser.uid,
@@ -171,8 +203,6 @@ const Profile: React.FC = () => {
             timezone: '',
             email: currentUser.email || '',
             phone: '',
-            profilePicture: '',
-            coverPhoto: '',
             technicalSkills: [],
             softSkills: [],
             languages: [],
@@ -180,7 +210,8 @@ const Profile: React.FC = () => {
             experiences: [],
             education: [],
             projects: [],
-            links: {},
+            hackathons: [],
+            links: {}
           });
         }
       } catch (err: any) {
@@ -907,6 +938,149 @@ const Profile: React.FC = () => {
                           </span>
                         ))}
                       </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Participated Hackathons */}
+            <div className="bg-gray-800/50 rounded-xl shadow-sm p-6 border border-gray-700">
+              <div className="flex items-center mb-4">
+                <TrophyIcon className="h-6 w-6 text-yellow-500 mr-3" />
+                <h2 className="text-xl font-semibold text-white">Participated Hackathons</h2>
+              </div>
+              {isEditing ? (
+                <div className="space-y-4">
+                  {profileData.hackathons?.map((hackathon: Hackathon, index: number) => (
+                    <div key={index} className="border border-gray-600 rounded-lg p-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <input
+                          type="text"
+                          value={hackathon.name}
+                          onChange={(e) => {
+                            const newHackathons = [...profileData.hackathons];
+                            newHackathons[index].name = e.target.value;
+                            setProfileData((prev: UserProfileData) => ({ ...prev, hackathons: newHackathons }));
+                          }}
+                          className="px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white placeholder-gray-400"
+                          placeholder="Hackathon Name"
+                        />
+                        <input
+                          type="text"
+                          value={hackathon.organizer}
+                          onChange={(e) => {
+                            const newHackathons = [...profileData.hackathons];
+                            newHackathons[index].organizer = e.target.value;
+                            setProfileData((prev: UserProfileData) => ({ ...prev, hackathons: newHackathons }));
+                          }}
+                          className="px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white placeholder-gray-400"
+                          placeholder="Organizer"
+                        />
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <input
+                          type="date"
+                          value={hackathon.startDate}
+                          onChange={(e) => {
+                            const newHackathons = [...profileData.hackathons];
+                            newHackathons[index].startDate = e.target.value;
+                            setProfileData((prev: UserProfileData) => ({ ...prev, hackathons: newHackathons }));
+                          }}
+                          className="px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white placeholder-gray-400"
+                        />
+                        <input
+                          type="date"
+                          value={hackathon.endDate}
+                          onChange={(e) => {
+                            const newHackathons = [...profileData.hackathons];
+                            newHackathons[index].endDate = e.target.value;
+                            setProfileData((prev: UserProfileData) => ({ ...prev, hackathons: newHackathons }));
+                          }}
+                          className="px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white placeholder-gray-400"
+                        />
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <input
+                          type="text"
+                          value={hackathon.placement || ''}
+                          onChange={(e) => {
+                            const newHackathons = [...profileData.hackathons];
+                            newHackathons[index].placement = e.target.value;
+                            setProfileData((prev: UserProfileData) => ({ ...prev, hackathons: newHackathons }));
+                          }}
+                          className="px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white placeholder-gray-400"
+                          placeholder="Placement (e.g., 1st Place)"
+                        />
+                        <input
+                          type="text"
+                          value={hackathon.prize || ''}
+                          onChange={(e) => {
+                            const newHackathons = [...profileData.hackathons];
+                            newHackathons[index].prize = e.target.value;
+                            setProfileData((prev: UserProfileData) => ({ ...prev, hackathons: newHackathons }));
+                          }}
+                          className="px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white placeholder-gray-400"
+                          placeholder="Prize (e.g., $1000)"
+                        />
+                      </div>
+                      <div className="flex justify-end">
+                        <button
+                          onClick={() => {
+                            const newHackathons = profileData.hackathons.filter((_: Hackathon, i: number) => i !== index);
+                            setProfileData((prev: UserProfileData) => ({ ...prev, hackathons: newHackathons }));
+                          }}
+                          className="text-red-400 hover:text-red-300"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  <button
+                    onClick={() => {
+                      setProfileData((prev: UserProfileData) => ({
+                        ...prev,
+                        hackathons: [...(prev.hackathons || []), {
+                          id: Date.now().toString(),
+                          name: '',
+                          organizer: '',
+                          startDate: '',
+                          endDate: '',
+                          placement: '',
+                          prize: ''
+                        }]
+                      }));
+                    }}
+                    className="text-blue-400 hover:text-blue-300"
+                  >
+                    + Add Hackathon
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {profileData.hackathons?.map((hackathon: Hackathon, index: number) => (
+                    <div key={index} className="border-l-4 border-yellow-500 pl-4">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <h3 className="font-semibold text-white">{hackathon.name}</h3>
+                          <p className="text-sm text-gray-400">{hackathon.organizer}</p>
+                          <p className="text-sm text-gray-400">
+                            {new Date(hackathon.startDate).toLocaleDateString()} - {new Date(hackathon.endDate).toLocaleDateString()}
+                          </p>
+                        </div>
+                        {hackathon.placement && (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-500/20 text-green-300">
+                            {hackathon.placement}
+                          </span>
+                        )}
+                      </div>
+                      {hackathon.prize && (
+                        <div className="flex items-center gap-2 mt-2">
+                          <TrophyIcon className="h-4 w-4 text-yellow-400" />
+                          <span className="text-sm text-yellow-400">{hackathon.prize}</span>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
