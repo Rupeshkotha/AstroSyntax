@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { getUserProfileData, UserProfileData } from '../utils/firestoreUtils';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
+import { CalendarIcon } from '@heroicons/react/24/outline';
 
 interface TeamCardProps {
   team: Team;
@@ -105,6 +106,15 @@ const TeamCard: React.FC<TeamCardProps> = ({
 
   const isMember = currentUser && team.members.some(member => member.id === currentUser.uid);
 
+  const formatDate = (dateString: string | undefined) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  };
+
   return (
     <div className="card glass hover:scale-[1.02] transition-all duration-300 p-6 space-y-6">
       {/* Header and Actions */}
@@ -112,6 +122,12 @@ const TeamCard: React.FC<TeamCardProps> = ({
         <div>
           <h3 className="text-xl font-bold gradient-text">{team.name}</h3>
           <p className="text-text-secondary text-sm mt-1">{team.hackathonName}</p>
+          {(team.hackathonStartDate && team.hackathonEndDate) && (
+            <p className="text-text-secondary text-xs mt-1 flex items-center">
+              <CalendarIcon className="w-4 h-4 mr-1" />
+              {formatDate(team.hackathonStartDate)} - {formatDate(team.hackathonEndDate)}
+            </p>
+          )}
         </div>
         {isTeamLead && (
           <div className="flex items-center space-x-2">

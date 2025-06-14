@@ -1,5 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { CalendarIcon, CodeBracketIcon, GlobeAltIcon, UserGroupIcon, TrophyIcon, ClockIcon } from '@heroicons/react/24/outline';
+import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import { getUserTeams } from '../utils/teamUtils';
 
 interface HackathonCardProps {
   hackathon: {
@@ -30,12 +33,54 @@ export const HackathonCard: React.FC<HackathonCardProps> = ({
   onCardClick,
   onTeamAction,
 }) => {
+  const { currentUser } = useAuth();
+  const navigate = useNavigate();
+  const [isRegistered, setIsRegistered] = useState(false);
+  const [userTeamId, setUserTeamId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const checkUserRegistration = async () => {
+      if (!currentUser || !hackathon.id) {
+        console.log('HackathonCard: Not checking registration. currentUser:', currentUser, 'hackathon.id:', hackathon.id);
+        return;
+      }
+      
+      console.log('HackathonCard: Checking registration for hackathon.id:', hackathon.id);
+
+      try {
+        const userTeams = await getUserTeams(currentUser.uid);
+        console.log('HackathonCard: Fetched userTeams:', userTeams);
+        const teamForHackathon = userTeams.find(team => team.hackathonId === hackathon.id);
+        
+        if (teamForHackathon) {
+          console.log('HackathonCard: Found team for hackathon:', teamForHackathon);
+          setIsRegistered(true);
+          setUserTeamId(teamForHackathon.id);
+        } else {
+          console.log('HackathonCard: No team found for this hackathon.');
+          setIsRegistered(false);
+          setUserTeamId(null);
+        }
+      } catch (error) {
+        console.error('HackathonCard: Error checking user registration:', error);
+      }
+    };
+
+    checkUserRegistration();
+  }, [currentUser, hackathon.id]);
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric'
     });
+  };
+
+  const handleViewTeam = () => {
+    if (userTeamId) {
+      navigate(`/teams?teamId=${userTeamId}`);
+    }
   };
 
   return (
@@ -108,25 +153,44 @@ export const HackathonCard: React.FC<HackathonCardProps> = ({
           <p className="text-gray-700 line-clamp-2">{hackathon.overview}</p>
           
           <div className="flex space-x-3 pt-4">
-            <a
-              href={hackathon.registrationLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors duration-300 text-center"
-              onClick={(e) => e.stopPropagation()}
-            >
-              Register Now
-            </a>
-            {onTeamAction && (
-              <button
-                className="flex-1 bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300 transition-colors duration-300"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onTeamAction();
-                }}
-              >
-                Team
-              </button>
+            {isRegistered ? (
+              <>
+                <button
+                  className="flex-1 bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors duration-300 text-center"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleViewTeam();
+                  }}
+                >
+                  View Team
+                </button>
+                <span className="flex-1 bg-gray-100 text-gray-600 px-4 py-2 rounded-md text-center">
+                  Registered
+                </span>
+              </>
+            ) : (
+              <>
+                <a
+                  href={hackathon.registrationLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors duration-300 text-center"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  Register Now
+                </a>
+                {onTeamAction && (
+                  <button
+                    className="flex-1 bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300 transition-colors duration-300"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onTeamAction();
+                    }}
+                  >
+                    Team
+                  </button>
+                )}
+              </>
             )}
           </div>
         </div>

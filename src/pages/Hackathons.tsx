@@ -8,10 +8,11 @@ import TeamModal from '../components/hackathons/TeamModal';
 import { getAllHackathons, getHackathonStatus } from '../utils/hackathonUtils';
 import { Hackathon } from '../utils/types';
 import { FunnelIcon } from '@heroicons/react/24/outline';
+import { getUserTeams } from '../utils/teamUtils';
 
 export const Hackathons: React.FC = () => {
   const { currentUser } = useAuth();
-  const [selectedHackathon, setSelectedHackathon] = useState<any>(null);
+  const [selectedHackathon, setSelectedHackathon] = useState<Hackathon | null>(null);
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
@@ -27,16 +28,36 @@ export const Hackathons: React.FC = () => {
   const [ongoingHackathons, setOngoingHackathons] = useState<Hackathon[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isHackathonRegistered, setIsHackathonRegistered] = useState(false);
+  const [currentUsersTeamId, setCurrentUsersTeamId] = useState<string | null>(null);
 
   const handleFilterChange = (newFilters: any) => {
     setFilters(prevFilters => ({ ...prevFilters, ...newFilters }));
   };
 
-  const handleHackathonClick = (hackathon: any) => {
+  const handleHackathonClick = async (hackathon: Hackathon) => {
     setSelectedHackathon(hackathon);
+    // Check if the current user is registered for THIS hackathon
+    if (currentUser && hackathon.id) {
+      try {
+        const userTeams = await getUserTeams(currentUser.uid);
+        const teamForThisHackathon = userTeams.find(team => team.hackathonId === hackathon.id);
+        if (teamForThisHackathon) {
+          setIsHackathonRegistered(true);
+          setCurrentUsersTeamId(teamForThisHackathon.id);
+        } else {
+          setIsHackathonRegistered(false);
+          setCurrentUsersTeamId(null);
+        }
+      } catch (err) {
+        console.error('Error checking hackathon registration status:', err);
+        setIsHackathonRegistered(false);
+        setCurrentUsersTeamId(null);
+      }
+    }
   };
 
-  const handleTeamAction = (hackathon: any) => {
+  const handleTeamAction = (hackathon: Hackathon) => {
     setSelectedHackathon(hackathon);
     setIsTeamModalOpen(true);
   };
@@ -194,7 +215,12 @@ export const Hackathons: React.FC = () => {
             console.log('Closing modal, selectedHackathon:', selectedHackathon);
             console.log('Selected Hackathon data passed to modal:', selectedHackathon);
             setSelectedHackathon(null);
+            setIsHackathonRegistered(false); // Reset status when modal closes
+            setCurrentUsersTeamId(null); // Reset team ID when modal closes
           }}
+          isRegistered={isHackathonRegistered}
+          userTeamId={currentUsersTeamId}
+          onTeamAction={handleTeamAction}
         />
       )}
 
@@ -203,6 +229,8 @@ export const Hackathons: React.FC = () => {
           hackathon={selectedHackathon}
           isOpen={isTeamModalOpen}
           onClose={() => setIsTeamModalOpen(false)}
+          isRegisteredForThisHackathon={isHackathonRegistered}
+          userTeamIdForThisHackathon={currentUsersTeamId}
         />
       )}
     </div>

@@ -29,19 +29,35 @@ const Teams: React.FC = () => {
       setIsLoading(true);
       setError('');
       let teamsData: Team[] = [];
+      const uniqueTeamIds = new Set<string>(); // Track unique team IDs
       
       if (currentUser) {
         // Get teams where user is a member
         const userTeams = await getUserTeams(currentUser.uid);
-        teamsData = [...userTeams];
+        userTeams.forEach(team => {
+          if (!uniqueTeamIds.has(team.id)) {
+            uniqueTeamIds.add(team.id);
+            teamsData.push(team);
+          }
+        });
         
         // Get available teams (where user is not a member)
         const availableTeams = await getAvailableTeams();
-        teamsData = [...teamsData, ...availableTeams];
+        availableTeams.forEach(team => {
+          if (!uniqueTeamIds.has(team.id)) {
+            uniqueTeamIds.add(team.id);
+            teamsData.push(team);
+          }
+        });
       } else {
         // If not logged in, just get all teams
         const availableTeams = await getAvailableTeams();
-        teamsData = availableTeams;
+        availableTeams.forEach(team => {
+          if (!uniqueTeamIds.has(team.id)) {
+            uniqueTeamIds.add(team.id);
+            teamsData.push(team);
+          }
+        });
       }
       
       setTeams(teamsData);

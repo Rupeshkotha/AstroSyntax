@@ -12,6 +12,8 @@ import {
   arrayUnion,
   arrayRemove
 } from 'firebase/firestore';
+import { Hackathon } from './types'; // Import Hackathon interface
+import { getHackathonById } from './hackathonUtils'; // Import getHackathonById
 
 export interface TeamMember {
   id: string;
@@ -25,8 +27,10 @@ export interface Team {
   id: string;
   name: string;
   description: string;
-  hackathonId: string;
+  hackathonId?: string;
   hackathonName: string;
+  hackathonStartDate?: string;
+  hackathonEndDate?: string;
   teamCode: string;
   members: TeamMember[];
   requiredSkills: string[];
@@ -79,6 +83,20 @@ export const createTeam = async (teamData: Omit<Team, 'id' | 'teamCode'>): Promi
     const teamCode = await generateTeamCode();
     console.log('createTeam: Generated code for new team:', teamCode);
     
+    // Fetch hackathon details if hackathonId is provided
+    let hackathonStartDate: string | undefined;
+    let hackathonEndDate: string | undefined;
+
+    if (teamData.hackathonId) {
+      const hackathonRef = doc(db, 'hackathons', teamData.hackathonId);
+      const hackathonDoc = await getDoc(hackathonRef);
+      if (hackathonDoc.exists()) {
+        const hackathonData = hackathonDoc.data() as Hackathon;
+        hackathonStartDate = hackathonData.startDate;
+        hackathonEndDate = hackathonData.endDate;
+      }
+    }
+
     // Create the team document with all required fields
     const teamRef = doc(collection(db, 'teams'));
     
@@ -97,6 +115,8 @@ export const createTeam = async (teamData: Omit<Team, 'id' | 'teamCode'>): Promi
       maxMembers: typeof teamData.maxMembers === 'number' ? teamData.maxMembers : 4,
       hackathonId: teamData.hackathonId || '',
       hackathonName: teamData.hackathonName || '',
+      hackathonStartDate: hackathonStartDate, // Include hackathon start date
+      hackathonEndDate: hackathonEndDate,     // Include hackathon end date
       members: Array.isArray(teamData.members) ? teamData.members.map(member => ({
         id: member.id || '',
         name: member.name || 'Anonymous',
@@ -137,8 +157,19 @@ export const getTeamByCode = async (teamCode: string): Promise<Team | null> => {
   );
   const teamsSnapshot = await getDocs(teamsQuery);
   if (teamsSnapshot.empty) return null;
-  const doc = teamsSnapshot.docs[0];
-  return { ...doc.data(), id: doc.id } as Team;
+  
+  const docData = teamsSnapshot.docs[0].data();
+  let team = { ...docData, id: teamsSnapshot.docs[0].id } as Team;
+
+  // Fetch hackathon details if hackathonId exists and dates are missing
+  if (team.hackathonId && (!team.hackathonStartDate || !team.hackathonEndDate)) {
+    const hackathon = await getHackathonById(team.hackathonId);
+    if (hackathon) {
+      team.hackathonStartDate = hackathon.startDate;
+      team.hackathonEndDate = hackathon.endDate;
+    }
+  }
+  return team;
 };
 
 // Get a team by ID
@@ -146,17 +177,46 @@ export const getTeam = async (teamId: string): Promise<Team | null> => {
   const teamRef = doc(db, 'teams', teamId);
   const teamDoc = await getDoc(teamRef);
   if (!teamDoc.exists()) return null;
-  return { ...teamDoc.data(), id: teamDoc.id } as Team;
+  
+  let team = { ...teamDoc.data(), id: teamDoc.id } as Team;
+
+  // Fetch hackathon details if hackathonId exists and dates are missing
+  if (team.hackathonId && (!team.hackathonStartDate || !team.hackathonEndDate)) {
+    const hackathon = await getHackathonById(team.hackathonId);
+    if (hackathon) {
+      team.hackathonStartDate = hackathon.startDate;
+      team.hackathonEndDate = hackathon.endDate;
+    }
+  }
+  return team;
 };
 
 // Get all teams for a user
 export const getUserTeams = async (userId: string): Promise<Team[]> => {
   const teamsQuery = query(
-    collection(db, 'teams'),
-    where('members', 'array-contains', { id: userId })
+    collection(db, 'teams')
   );
   const teamsSnapshot = await getDocs(teamsQuery);
-  return teamsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }) as Team);
+  const allTeams = teamsSnapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  }) as Team);
+
+  const userTeams: Team[] = [];
+  for (const team of allTeams) {
+    if (team.members.some(member => member.id === userId)) {
+      // Fetch hackathon details if hackathonId exists and dates are missing
+      if (team.hackathonId && (!team.hackathonStartDate || !team.hackathonEndDate)) {
+        const hackathon = await getHackathonById(team.hackathonId);
+        if (hackathon) {
+          team.hackathonStartDate = hackathon.startDate;
+          team.hackathonEndDate = hackathon.endDate;
+        }
+      }
+      userTeams.push(team);
+    }
+  }
+  return userTeams;
 };
 
 // Update a team
@@ -187,6 +247,8 @@ export const updateTeam = async (teamId: string, updates: Partial<Team>): Promis
   if (updates.hackathonName !== undefined) updateData.hackathonName = updates.hackathonName;
   if (updates.members !== undefined) updateData.members = updates.members;
   if (updates.joinRequests !== undefined) updateData.joinRequests = updates.joinRequests;
+  if (updates.hackathonStartDate !== undefined) updateData.hackathonStartDate = updates.hackathonStartDate; // Include hackathon start date
+  if (updates.hackathonEndDate !== undefined) updateData.hackathonEndDate = updates.hackathonEndDate;     // Include hackathon end date
 
   console.log('Final update data:', updateData);
 
@@ -267,9 +329,26 @@ export const searchTeamsBySkills = async (skills: string[]): Promise<Team[]> => 
 export const getAvailableTeams = async (): Promise<Team[]> => {
   const teamsQuery = query(collection(db, 'teams'));
   const teamsSnapshot = await getDocs(teamsQuery);
-  return teamsSnapshot.docs
-    .map(doc => ({ ...doc.data(), id: doc.id }) as Team)
-    .filter(team => team.members.length < team.maxMembers);
+  const allTeams = teamsSnapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  }) as Team);
+
+  const availableTeams: Team[] = [];
+  for (const team of allTeams) {
+    if (team.members.length < team.maxMembers) {
+      // Fetch hackathon details if hackathonId exists and dates are missing
+      if (team.hackathonId && (!team.hackathonStartDate || !team.hackathonEndDate)) {
+        const hackathon = await getHackathonById(team.hackathonId);
+        if (hackathon) {
+          team.hackathonStartDate = hackathon.startDate;
+          team.hackathonEndDate = hackathon.endDate;
+        }
+      }
+      availableTeams.push(team);
+    }
+  }
+  return availableTeams;
 };
 
 // Check if user is already in any team

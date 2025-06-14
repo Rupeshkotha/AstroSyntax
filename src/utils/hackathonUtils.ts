@@ -1,4 +1,4 @@
-import { collection, addDoc, getDocs, query, orderBy, Timestamp, doc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, orderBy, Timestamp, doc, deleteDoc, updateDoc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Hackathon } from './types';
 
@@ -10,9 +10,14 @@ export const getHackathonStatus = (hackathon: Hackathon): 'upcoming' | 'ongoing'
   const startDate = new Date(hackathon.startDate);
   const endDate = new Date(hackathon.endDate);
 
-  if (now < startDate) {
+  // Convert all dates to UTC for consistent comparison
+  const nowUTC = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), now.getUTCHours(), now.getUTCMinutes());
+  const startUTC = Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate(), startDate.getUTCHours(), startDate.getUTCMinutes());
+  const endUTC = Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth(), endDate.getUTCDate(), endDate.getUTCHours(), endDate.getUTCMinutes());
+
+  if (nowUTC < startUTC) {
     return 'upcoming';
-  } else if (now >= startDate && now <= endDate) {
+  } else if (nowUTC >= startUTC && nowUTC <= endUTC) {
     return 'ongoing';
   } else {
     return 'past';
@@ -40,14 +45,69 @@ export const getAllHackathons = async () => {
       orderBy('startDate', 'asc') // Order by start date for consistent fetching
     );
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      startDate: doc.data().startDate.toDate().toISOString(),
-      endDate: doc.data().endDate.toDate().toISOString()
-    })) as Hackathon[];
+    return querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      const hackathon: Hackathon = {
+        id: doc.id,
+        title: data.title,
+        description: data.description,
+        overview: data.overview,
+        eligibility: data.eligibility,
+        techStack: data.techStack,
+        timeline: data.timeline,
+        teamSize: data.teamSize,
+        prize: data.prize,
+        startDate: data.startDate.toDate().toISOString(),
+        endDate: data.endDate.toDate().toISOString(),
+        location: data.location,
+        platform: data.platform,
+        domain: data.domain,
+        registrationLink: data.registrationLink,
+        status: 'upcoming', // This will be updated below
+        thumbnailUrl: data.thumbnailUrl
+      };
+      // Calculate current status
+      hackathon.status = getHackathonStatus(hackathon);
+      return hackathon;
+    });
   } catch (error) {
     console.error('Error getting all hackathons:', error);
+    throw error;
+  }
+};
+
+// New function to get a single hackathon by ID
+export const getHackathonById = async (id: string): Promise<Hackathon | null> => {
+  try {
+    const docRef = doc(db, HACKATHONS_COLLECTION, id);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      const data = docSnap.data();
+      return {
+        id: docSnap.id,
+        title: data.title,
+        description: data.description,
+        overview: data.overview,
+        eligibility: data.eligibility,
+        techStack: data.techStack,
+        timeline: data.timeline,
+        teamSize: data.teamSize,
+        prize: data.prize,
+        startDate: data.startDate.toDate().toISOString(),
+        endDate: data.endDate.toDate().toISOString(),
+        location: data.location,
+        platform: data.platform,
+        domain: data.domain,
+        registrationLink: data.registrationLink,
+        status: getHackathonStatus(data as Hackathon), // Ensure status is calculated
+        thumbnailUrl: data.thumbnailUrl
+      } as Hackathon;
+    } else {
+      console.log("No such hackathon document!");
+      return null;
+    }
+  } catch (error) {
+    console.error("Error getting hackathon by ID:", error);
     throw error;
   }
 };

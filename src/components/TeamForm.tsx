@@ -4,7 +4,21 @@ import { Team, TeamMember, createTeam, updateTeam, getTeam } from '../utils/team
 import { UserProfileData } from '../utils/firestoreUtils';
 
 interface TeamFormProps {
-  initialData?: Team;
+  onSuccess?: () => void;
+  initialData?: {
+    id?: string;
+    name: string;
+    description: string;
+    requiredSkills: string[];
+    maxMembers: number;
+    hackathonId?: string;
+    hackathonName?: string;
+    teamCode?: string;
+    members?: TeamMember[];
+    createdAt?: Date;
+    createdBy?: string;
+    joinRequests?: string[];
+  };
   onSubmit: (team: Team) => void;
   onCancel: () => void;
   loading?: boolean;
@@ -38,7 +52,7 @@ const TeamForm: React.FC<TeamFormProps> = ({ initialData, onSubmit, onCancel, lo
         hackathonId: initialData.hackathonId,
         hackathonName: initialData.hackathonName,
       });
-      setTeamCode(initialData.teamCode);
+      setTeamCode(initialData.teamCode || '');
     }
   }, [initialData]);
 

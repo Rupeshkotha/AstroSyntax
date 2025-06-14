@@ -5,18 +5,29 @@ import { XMarkIcon, UserGroupIcon, PlusIcon } from '@heroicons/react/24/outline'
 import { useAuth } from '../../contexts/AuthContext';
 import { Team, createTeam, getTeam, getTeamByCode, isUserInAnyTeam, addTeamMember } from '../../utils/teamUtils';
 import TeamForm from '../TeamForm';
+import { useNavigate } from 'react-router-dom';
+import { Tab } from '@headlessui/react';
 
 interface TeamModalProps {
   hackathon: {
-    id: string;
+    id?: string;
     title: string;
   };
   isOpen: boolean;
   onClose: () => void;
+  isRegisteredForThisHackathon: boolean;
+  userTeamIdForThisHackathon: string | null;
 }
 
-const TeamModal: React.FC<TeamModalProps> = ({ hackathon, isOpen, onClose }) => {
+const TeamModal: React.FC<TeamModalProps> = ({
+  hackathon,
+  isOpen,
+  onClose,
+  isRegisteredForThisHackathon,
+  userTeamIdForThisHackathon
+}) => {
   const { currentUser } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'create' | 'join'>('create');
   const [teamCode, setTeamCode] = useState('');
   const [error, setError] = useState('');
@@ -140,6 +151,13 @@ const TeamModal: React.FC<TeamModalProps> = ({ hackathon, isOpen, onClose }) => 
     }
   };
 
+  const handleViewTeam = () => {
+    if (userTeamIdForThisHackathon) {
+      onClose(); // Close the modal before navigating
+      navigate(`/teams?teamId=${userTeamIdForThisHackathon}`);
+    }
+  };
+
   return (
     <Transition appear show={isOpen} as={Fragment}>
       <Dialog as="div" className="relative z-50" onClose={onClose}>
@@ -179,10 +197,14 @@ const TeamModal: React.FC<TeamModalProps> = ({ hackathon, isOpen, onClose }) => 
 
                 <div className="mb-6">
                   <Dialog.Title as="h3" className="text-2xl font-bold text-white mb-2">
-                    Team Management
+                    Team Management for {hackathon.title}
                   </Dialog.Title>
                   <p className="text-gray-400">
-                    Create a new team or join an existing one for {hackathon.title}
+                    {isRegisteredForThisHackathon ? (
+                      'You are already part of a team for this hackathon.'
+                    ) : (
+                      'Create a new team or join an existing one.'
+                    )}
                   </p>
                 </div>
 
@@ -198,80 +220,94 @@ const TeamModal: React.FC<TeamModalProps> = ({ hackathon, isOpen, onClose }) => 
                   </div>
                 )}
 
-                <div className="flex space-x-4 mb-6">
-                  <button
-                    className={`flex-1 py-2 px-4 rounded-lg flex items-center justify-center space-x-2 ${
-                      activeTab === 'create'
-                        ? 'bg-blue-500 text-white'
-                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                    }`}
-                    onClick={() => setActiveTab('create')}
-                  >
-                    <PlusIcon className="w-5 h-5" />
-                    <span>Create Team</span>
-                  </button>
-                  <button
-                    className={`flex-1 py-2 px-4 rounded-lg flex items-center justify-center space-x-2 ${
-                      activeTab === 'join'
-                        ? 'bg-blue-500 text-white'
-                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                    }`}
-                    onClick={() => setActiveTab('join')}
-                  >
-                    <UserGroupIcon className="w-5 h-5" />
-                    <span>Join Team</span>
-                  </button>
-                </div>
-
-                {activeTab === 'create' ? (
-                  <TeamForm
-                    onSubmit={handleCreateTeam}
-                    onCancel={onClose}
-                    initialData={{
-                      id: '',
-                      name: '',
-                      description: '',
-                      hackathonId: hackathon.id,
-                      hackathonName: hackathon.title,
-                      teamCode: '',
-                      members: [],
-                      requiredSkills: [],
-                      maxMembers: 4,
-                      createdAt: new Date(),
-                      createdBy: currentUser?.uid || '',
-                      joinRequests: []
-                    }}
-                    loading={loading}
-                  />
-                ) : (
-                  <form onSubmit={handleJoinTeam} className="space-y-4">
-                    <div>
-                      <label htmlFor="teamCode" className="block text-sm font-medium text-gray-300 mb-2">
-                        Team Code
-                      </label>
-                      <input
-                        type="text"
-                        id="teamCode"
-                        value={teamCode}
-                        onChange={(e) => setTeamCode(e.target.value.toUpperCase())}
-                        placeholder="Enter team code"
-                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
+                {isRegisteredForThisHackathon ? (
+                  <div className="flex justify-center mt-6">
                     <button
-                      type="submit"
-                      disabled={loading}
-                      className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="bg-green-600 text-white px-6 py-3 rounded-md hover:bg-green-700 transition-colors duration-300 text-center font-semibold"
+                      onClick={handleViewTeam}
                     >
-                      {loading ? (
-                        <svg className="animate-spin h-5 w-5 mr-3 text-white" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                      ) : null}
-                      Join Team
+                      View My Team
                     </button>
-                  </form>
+                  </div>
+                ) : (
+                  <div className="flex justify-center mb-6">
+                    <Tab.Group>
+                      <Tab.List className="flex space-x-1 rounded-xl bg-gray-700 p-1">
+                        <Tab
+                          className={({ selected }) =>
+                            `w-full rounded-lg py-2.5 text-sm font-medium leading-5 text-blue-100
+                              ${selected
+                                ? 'bg-white text-blue-700 shadow'
+                                : 'text-blue-100 hover:bg-white/[0.12] hover:text-white'
+                              }`
+                          }
+                          onClick={() => setActiveTab('create')}
+                        >
+                          <PlusIcon className="w-5 h-5 inline-block mr-2" /> Create Team
+                        </Tab>
+                        <Tab
+                          className={({ selected }) =>
+                            `w-full rounded-lg py-2.5 text-sm font-medium leading-5 text-blue-100
+                              ${selected
+                                ? 'bg-white text-blue-700 shadow'
+                                : 'text-blue-100 hover:bg-white/[0.12] hover:text-white'
+                              }`
+                          }
+                          onClick={() => setActiveTab('join')}
+                        >
+                          <UserGroupIcon className="w-5 h-5 inline-block mr-2" /> Join Team
+                        </Tab>
+                      </Tab.List>
+                      <Tab.Panels className="mt-2">
+                        <Tab.Panel className="rounded-xl bg-gray-800 p-3 ring-white ring-opacity-60 ring-offset-2 ring-offset-blue-400 focus:outline-none focus:ring-2">
+                          <TeamForm
+                            onSubmit={handleCreateTeam}
+                            onCancel={onClose}
+                            initialData={{
+                              id: '',
+                              name: '',
+                              description: '',
+                              hackathonId: hackathon.id || '',
+                              hackathonName: hackathon.title,
+                              teamCode: '',
+                              members: [],
+                              requiredSkills: [],
+                              maxMembers: 4,
+                              createdAt: new Date(),
+                              createdBy: currentUser?.uid || '',
+                              joinRequests: []
+                            }}
+                            loading={loading}
+                          />
+                        </Tab.Panel>
+                        <Tab.Panel className="rounded-xl bg-gray-800 p-3 ring-white ring-opacity-60 ring-offset-2 ring-offset-blue-400 focus:outline-none focus:ring-2">
+                          <form onSubmit={handleJoinTeam} className="space-y-4">
+                            <div>
+                              <label htmlFor="teamCode" className="block text-sm font-medium text-gray-300 mb-2">
+                                Team Code
+                              </label>
+                              <input
+                                type="text"
+                                id="teamCode"
+                                value={teamCode}
+                                onChange={(e) => setTeamCode(e.target.value.toUpperCase())}
+                                placeholder="Enter team code"
+                                className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              />
+                            </div>
+                            <button
+                              type="submit"
+                              className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+                              disabled={loading}
+                            >
+                              {loading ? 'Joining...' : 'Join Team'}
+                            </button>
+                            {error && <p className="text-red-400 text-sm mt-2">{error}</p>}
+                          </form>
+                        </Tab.Panel>
+                      </Tab.Panels>
+                    </Tab.Group>
+                  </div>
                 )}
               </Dialog.Panel>
             </Transition.Child>
