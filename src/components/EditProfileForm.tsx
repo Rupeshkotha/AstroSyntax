@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { UserProfileData, saveUserProfile, uploadProfileImage } from '../utils/firestoreUtils';
 import { TrashIcon, PlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../contexts/AuthContext';
+import { doc, setDoc } from 'firebase/firestore';
+import { db } from '../firebase';
 
 // Common skills list for suggestions
 const commonSkills = [
@@ -77,9 +79,52 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({ initialData, onSave, 
   useEffect(() => {
     if (initialData) {
       setFormData(initialData);
-      if (initialData.profilePicture) setProfileImageLoading(true);
-      if (initialData.coverPhoto) setCoverImageLoading(true);
+      
+      // Handle profile picture loading
+      if (initialData.profilePicture) {
+        console.log('[useEffect] Setting profile image loading, URL:', initialData.profilePicture);
+        setProfileImageLoading(true);
+        
+        // Preload the image to ensure it's in the browser cache
+        const profileImg = new Image();
+        profileImg.onload = () => {
+          console.log('[useEffect] Profile image preloaded successfully');
+          // Small delay to ensure state updates properly
+          setTimeout(() => setProfileImageLoading(false), 100);
+        };
+        profileImg.onerror = () => {
+          console.error('[useEffect] Failed to preload profile image');
+          setProfileImageLoading(false);
+        };
+        // Add cache-busting parameter if not already present
+        profileImg.src = initialData.profilePicture.includes('?') 
+          ? initialData.profilePicture 
+          : `${initialData.profilePicture}?t=${Date.now()}`;
+      }
+      
+      // Handle cover photo loading
+      if (initialData.coverPhoto) {
+        console.log('[useEffect] Setting cover image loading, URL:', initialData.coverPhoto);
+        setCoverImageLoading(true);
+        
+        // Preload the image to ensure it's in the browser cache
+        const coverImg = new Image();
+        coverImg.onload = () => {
+          console.log('[useEffect] Cover image preloaded successfully');
+          // Small delay to ensure state updates properly
+          setTimeout(() => setCoverImageLoading(false), 100);
+        };
+        coverImg.onerror = () => {
+          console.error('[useEffect] Failed to preload cover image');
+          setCoverImageLoading(false);
+        };
+        // Add cache-busting parameter if not already present
+        coverImg.src = initialData.coverPhoto.includes('?') 
+          ? initialData.coverPhoto 
+          : `${initialData.coverPhoto}?t=${Date.now()}`;
+      }
     }
+    
     setLoading(false);
   }, [initialData]);
 
@@ -116,10 +161,55 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({ initialData, onSave, 
     }
   };
 
+  const handleDeleteImage = async (type: 'profile' | 'cover') => {
+    if (!currentUser) return;
+    
+    console.log(`[${type}] Deleting image...`);
+    setError(null);
+    
+    try {
+      // Set loading state
+      if (type === 'profile') {
+        setUploadingProfileImage(true);
+      } else {
+        setUploadingCoverImage(true);
+      }
+      
+      // Update the user profile in Firestore
+      const userRef = doc(db, 'users', currentUser.uid);
+      const updateData = type === 'profile' 
+        ? { profilePicture: null } 
+        : { coverPhoto: null };
+      
+      await setDoc(userRef, updateData, { merge: true });
+      
+      // Update local state
+      setFormData(prev => ({
+        ...prev,
+        [type === 'profile' ? 'profilePicture' : 'coverPhoto']: ''
+      }));
+      
+      console.log(`[${type}] Image deleted successfully`);
+      setSuccess(`${type === 'profile' ? 'Profile' : 'Cover'} image deleted successfully`);
+      
+    } catch (error: any) {
+      console.error(`[${type}] Error deleting image:`, error);
+      setError(error.message || `Failed to delete ${type} image`);
+    } finally {
+      // Reset loading state
+      if (type === 'profile') {
+        setUploadingProfileImage(false);
+      } else {
+        setUploadingCoverImage(false);
+      }
+    }
+  };
+
   const handleImageUpload = async (file: File, type: 'profile' | 'cover') => {
   if (!currentUser) return;
 
   console.log(`[${type}] Starting image upload...`);
+  setError(null); // Clear any previous errors
 
   try {
     if (type === 'profile') {
@@ -132,24 +222,50 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({ initialData, onSave, 
       console.log(`[${type}] setUploadingCoverImage(true), setCoverImageLoading(true)`);
     }
 
+    // Validate file size (max 10MB)
+    const maxSize = 10 * 1024 * 1024; // 10MB in bytes
+    if (file.size > maxSize) {
+      throw new Error(`Image size exceeds 10MB limit. Please choose a smaller image.`);
+    }
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      throw new Error(`Invalid file type. Please upload a JPEG, PNG, GIF, or WebP image.`);
+    }
+
+    console.log(`[${type}] File validation passed. Size: ${(file.size / 1024).toFixed(2)}KB, Type: ${file.type}`);
+
     let downloadURL = await uploadProfileImage(currentUser.uid, file, type);
     console.log(`[${type}] uploadProfileImage completed, downloadURL:`, downloadURL);
 
+    // Add a cache-busting parameter to force a fresh image load
     downloadURL = `${downloadURL}?t=${Date.now()}`;
-    console.log(`[${type}] Updated downloadURL:`, downloadURL);
+    console.log(`[${type}] Updated downloadURL with cache-busting parameter:`, downloadURL);
 
+    // Update the form data with the new image URL
     setFormData(prev => {
       const newState = {
         ...prev,
         [type === 'profile' ? 'profilePicture' : 'coverPhoto']: downloadURL
       };
       console.log(`[${type}] setFormData called, new state for ${type} picture:`, newState[type === 'profile' ? 'profilePicture' : 'coverPhoto']);
+      
+      // Force a reload of the image by setting loading state again briefly
+      if (type === 'profile') {
+        setTimeout(() => setProfileImageLoading(true), 10);
+        setTimeout(() => setProfileImageLoading(false), 500);
+      } else {
+        setTimeout(() => setCoverImageLoading(true), 10);
+        setTimeout(() => setCoverImageLoading(false), 500);
+      }
+      
       return newState;
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error(`[${type}] Error uploading image:`, error);
-    setError('Failed to upload image');
+    setError(error.message || 'Failed to upload image. Please try again.');
     if (type === 'profile') {
       setProfileImageLoading(false);
     } else {
@@ -289,12 +405,28 @@ const addEducation = () => {
               </div>
             ) : formData.profilePicture ? (
               <img
-                key={formData.profilePicture}
+                key={`profile-${Date.now()}`} // Force re-render on each render cycle
                 src={formData.profilePicture}
                 alt="Profile"
                 className="w-full h-full object-cover"
-                onLoad={() => setProfileImageLoading(false)}
-                onError={() => setProfileImageLoading(false)}
+                onLoad={() => {
+                  console.log('[profile] Image loaded successfully');
+                  setProfileImageLoading(false);
+                }}
+                onError={(e) => {
+                  console.error('[profile] Error loading image:', e);
+                  setProfileImageLoading(false);
+                  
+                  // Try loading the image with a different cache-busting parameter
+                  const imgElement = e.target as HTMLImageElement;
+                  const baseUrl = formData.profilePicture?.split('?')[0] || '';
+                  if (!imgElement.src.includes('retry=')) {
+                    console.log('[profile] Retrying image load with cache-busting');
+                    setTimeout(() => {
+                      imgElement.src = `${baseUrl}?retry=true&t=${Date.now()}`;
+                    }, 500);
+                  }
+                }}
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-gray-400 text-6xl">👤</div>
@@ -310,7 +442,7 @@ const addEducation = () => {
               }}
             />
             {!uploadingProfileImage && (
-              <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+              <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                 <button
                   type="button"
                   onClick={() => profileImageInputRef.current?.click()}
@@ -318,6 +450,15 @@ const addEducation = () => {
                 >
                   Change Photo
                 </button>
+                {formData.profilePicture && (
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteImage('profile')}
+                    className="px-4 py-2 bg-red-500/20 backdrop-blur-sm rounded-lg text-white text-sm font-medium hover:bg-red-500/40 transition-colors"
+                  >
+                    Delete Photo
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -345,12 +486,28 @@ const addEducation = () => {
               </div>
             ) : formData.coverPhoto ? (
               <img
-                key={formData.coverPhoto}
+                key={`cover-${Date.now()}`} // Force re-render on each render cycle
                 src={formData.coverPhoto}
                 alt="Cover"
                 className="w-full h-full object-cover"
-                onLoad={() => setCoverImageLoading(false)}
-                onError={() => setCoverImageLoading(false)}
+                onLoad={() => {
+                  console.log('[cover] Image loaded successfully');
+                  setCoverImageLoading(false);
+                }}
+                onError={(e) => {
+                  console.error('[cover] Error loading image:', e);
+                  setCoverImageLoading(false);
+                  
+                  // Try loading the image with a different cache-busting parameter
+                  const imgElement = e.target as HTMLImageElement;
+                  const baseUrl = formData.coverPhoto?.split('?')[0] || '';
+                  if (!imgElement.src.includes('retry=')) {
+                    console.log('[cover] Retrying image load with cache-busting');
+                    setTimeout(() => {
+                      imgElement.src = `${baseUrl}?retry=true&t=${Date.now()}`;
+                    }, 500);
+                  }
+                }}
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-gray-400 text-lg">No Cover Photo</div>
@@ -366,7 +523,7 @@ const addEducation = () => {
               }}
             />
             {!uploadingCoverImage && (
-              <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+              <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                 <button
                   type="button"
                   onClick={() => coverImageInputRef.current?.click()}
@@ -374,6 +531,15 @@ const addEducation = () => {
                 >
                   Change Cover Photo
                 </button>
+                {formData.coverPhoto && (
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteImage('cover')}
+                    className="px-4 py-2 bg-red-500/20 backdrop-blur-sm rounded-lg text-white text-sm font-medium hover:bg-red-500/40 transition-colors"
+                  >
+                    Delete Cover
+                  </button>
+                )}
               </div>
             )}
           </div>

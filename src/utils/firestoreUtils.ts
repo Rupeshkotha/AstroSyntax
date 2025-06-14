@@ -1,6 +1,8 @@
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } from 'firebase/firestore';
+import axios from 'axios';
+import { CLOUDINARY_CLOUD_NAME, CLOUDINARY_UPLOAD_PRESET } from '../config/cloudinaryConfig';
 
 export interface Skill {
   name: string;
@@ -210,3 +212,88 @@ export const setUserAsAdmin = async (userId: string) => {
     throw error;
   }
 }; 
+
+/**
+ * Uploads a profile or cover image to Cloudinary and returns the URL
+ * @param userId The user ID
+ * @param file The image file to upload
+ * @param type The type of image ('profile' or 'cover')
+ * @returns The URL of the uploaded image
+ */
+export const uploadProfileImage = async (
+  userId: string, 
+  file: File, 
+  type: 'profile' | 'cover'
+): Promise<string> => {
+  console.log(`[firestoreUtils] Uploading ${type} image for user ${userId}`);
+  
+  try {
+    // Create a unique folder path for the user's images
+    const folderPath = `users/${userId}/${type}`;
+    
+    // Create a unique filename with timestamp (without the folder path)
+    const timestamp = new Date().getTime();
+    const filename = `image_${timestamp}`;
+    
+    console.log(`[firestoreUtils] Preparing to upload image to Cloudinary:
+      - Cloud name: ${CLOUDINARY_CLOUD_NAME}
+      - Upload preset: ${CLOUDINARY_UPLOAD_PRESET}
+      - Folder path: ${folderPath}
+      - Filename: ${filename}
+      - File type: ${file.type}
+      - File size: ${(file.size / 1024).toFixed(2)} KB`);
+    
+    // Create form data for the upload
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+    formData.append('folder', folderPath);
+    formData.append('public_id', filename);
+    
+    // Upload to Cloudinary
+    console.log(`[firestoreUtils] Sending request to Cloudinary API...`);
+    const response = await axios.post(
+      `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
+      formData
+    );
+    
+    console.log(`[firestoreUtils] Cloudinary API response:`, response.status, response.statusText);
+    
+    // Get the secure URL from the response
+    const imageUrl = response.data.secure_url;
+    console.log(`[firestoreUtils] Image uploaded successfully, URL: ${imageUrl}`);
+    
+    // Update the user's profile with the new image URL
+    const userRef = doc(db, 'users', userId);
+    const updateData = type === 'profile' 
+      ? { profilePicture: imageUrl } 
+      : { coverPhoto: imageUrl };
+    
+    await setDoc(userRef, updateData, { merge: true });
+    console.log(`[firestoreUtils] User profile updated with new ${type} image URL`);
+    
+    return imageUrl;
+  } catch (error: any) {
+    console.error(`[firestoreUtils] Error uploading ${type} image:`, error);
+    
+    // Enhanced error logging
+    if (error.response) {
+      // The request was made and the server responded with a status code
+      // that falls out of the range of 2xx
+      console.error(`[firestoreUtils] Cloudinary API error response:
+        - Status: ${error.response.status}
+        - Data: ${JSON.stringify(error.response.data)}
+        - Headers: ${JSON.stringify(error.response.headers)}`);
+    } else if (error.request) {
+      // The request was made but no response was received
+      console.error(`[firestoreUtils] No response received from Cloudinary API:
+        - Request: ${JSON.stringify(error.request)}`);
+    } else {
+      // Something happened in setting up the request that triggered an Error
+      console.error(`[firestoreUtils] Error setting up request:
+        - Message: ${error.message}`);
+    }
+    
+    throw new Error(`Failed to upload ${type} image: ${error.message || 'Unknown error'}`);
+  }
+};

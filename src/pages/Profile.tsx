@@ -3,9 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { saveUserProfile, UserProfileData, uploadProfileImage } from '../utils/firestoreUtils';
 import EditProfileForm from '../components/EditProfileForm';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { CLOUDINARY_CLOUD_NAME } from '../config/cloudinaryConfig';
+import { CLOUDINARY_CLOUD_NAME, CLOUDINARY_UPLOAD_PRESET } from '../config/cloudinaryConfig';
 import { Cloudinary } from '@cloudinary/url-gen';
 import axios from 'axios';
 import {
@@ -18,6 +18,7 @@ import {
   XMarkIcon,
   PhotoIcon,
   CameraIcon,
+  TrashIcon,
 } from '@heroicons/react/24/outline';
 
 // Initialize Cloudinary
@@ -253,6 +254,37 @@ const Profile: React.FC = () => {
     }
   };
 
+  const handleDeleteImage = async (type: 'profile' | 'cover') => {
+    if (!currentUser) return;
+    
+    setUploadingImage(true);
+    setError(null);
+    
+    try {
+      // Update the user profile in Firestore
+      const userRef = doc(db, 'users', currentUser.uid);
+      const updateData = type === 'profile' 
+        ? { profilePicture: null } 
+        : { coverPhoto: null };
+      
+      await setDoc(userRef, updateData, { merge: true });
+      
+      // Update local state
+      setProfileData(prev => ({
+        ...prev,
+        [type === 'profile' ? 'profilePicture' : 'coverPhoto']: ''
+      }));
+      
+      alert(`${type === 'profile' ? 'Profile' : 'Cover'} image deleted successfully`);
+      
+    } catch (err: any) {
+      console.error(`Error deleting ${type} image:`, err);
+      setError(`Failed to delete ${type} image. Please try again.`);
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'profile' | 'cover') => {
     if (!currentUser || !e.target.files || e.target.files.length === 0) return;
 
@@ -260,18 +292,18 @@ const Profile: React.FC = () => {
     setUploadingImage(true);
     setError(null);
 
-    const unsignedUploadPreset = 'YOUR_UNSIGNED_UPLOAD_PRESET_NAME'; // *** IMPORTANT: Replace with your actual unsigned upload preset name ***
-
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('upload_preset', unsignedUploadPreset);
+    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
 
     try {
+      console.log(`Uploading image to Cloudinary with preset: ${CLOUDINARY_UPLOAD_PRESET}`);
       const response = await axios.post(
         `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
         formData
       );
 
+      console.log('Cloudinary upload successful:', response.status);
       const imageUrl = response.data.secure_url;
 
       let updatedProfileData: UserProfileData;
@@ -286,7 +318,21 @@ const Profile: React.FC = () => {
       alert(`${type === 'profile' ? 'Profile picture' : 'Cover photo'} uploaded successfully!`);
     } catch (err: any) {
       console.error(`Error uploading ${type} image:`, err);
-      setError(`Failed to upload ${type} image. Please try again.`);
+      
+      let errorMessage = `Failed to upload ${type} image. Please try again.`;
+      
+      // Extract more specific error message if available
+      if (err.response && err.response.data && err.response.data.error && err.response.data.error.message) {
+        errorMessage = `Cloudinary error: ${err.response.data.error.message}`;
+        console.error('Cloudinary API error details:', err.response.data);
+      }
+      
+      setError(errorMessage);
+      
+      // If the error is about unsigned upload preset, show a more helpful message
+      if (errorMessage.includes('unsigned uploads') || errorMessage.includes('upload preset')) {
+        setError(`${errorMessage}. Please create an unsigned upload preset in your Cloudinary dashboard named 'astrosyntax_unsigned'.`);
+      }
     } finally {
       setUploadingImage(false);
       // Clear the file input field
@@ -358,26 +404,40 @@ const Profile: React.FC = () => {
             <div className="w-full h-full flex items-center justify-center text-white text-lg font-semibold">No Cover Photo</div>
           )}
           {isEditing && (
-            <label
-              htmlFor="cover-upload"
-              className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 cursor-pointer text-white"
-            >
-              <CameraIcon className="w-8 h-8 mr-2" />
-              Upload Cover Photo
-              <input
-                id="cover-upload"
-                type="file"
-                ref={coverImageInputRef}
-                className="hidden"
-                accept="image/*"
-                onChange={(e) => handleImageUpload(e, 'cover')}
-                disabled={uploadingImage}
-              />
-            </label>
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-white">
+              <label
+                htmlFor="cover-upload"
+                className="flex items-center justify-center cursor-pointer px-4 py-2 bg-white/10 backdrop-blur-sm rounded-lg text-white text-sm font-medium hover:bg-white/20 transition-colors mb-2"
+              >
+                <CameraIcon className="w-5 h-5 mr-2" />
+                Upload Cover Photo
+                <input
+                  id="cover-upload"
+                  type="file"
+                  ref={coverImageInputRef}
+                  className="hidden"
+                  accept="image/*"
+                  onChange={(e) => handleImageUpload(e, 'cover')}
+                  disabled={uploadingImage}
+                />
+              </label>
+              
+              {profileData.coverPhoto && (
+                <button
+                  type="button"
+                  onClick={() => handleDeleteImage('cover')}
+                  className="flex items-center justify-center px-4 py-2 bg-red-500/20 backdrop-blur-sm rounded-lg text-white text-sm font-medium hover:bg-red-500/40 transition-colors"
+                  disabled={uploadingImage}
+                >
+                  <TrashIcon className="w-5 h-5 mr-2" />
+                  Delete Cover Photo
+                </button>
+              )}
+            </div>
           )}
         </div>
 
-        <div className="relative w-32 h-32 rounded-full border-4 border-white shadow-lg bg-gray-300 absolute top-32 left-1/2 transform -translate-x-1/2 overflow-hidden flex items-center justify-center">
+        <div className="relative w-32 h-32 rounded-full border-4 border-white shadow-lg bg-gray-300 absolute top-32 left-1/2 transform -translate-x-1/2 overflow-hidden flex items-center justify-center group">
           {profileData.profilePicture ? (
             <img
               src={profileData.profilePicture}
@@ -386,6 +446,39 @@ const Profile: React.FC = () => {
             />
           ) : (
             <UserCircleIcon className="w-24 h-24 text-gray-500" />
+          )}
+          
+          {isEditing && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-white">
+              <label
+                htmlFor="profile-upload"
+                className="flex items-center justify-center cursor-pointer px-3 py-1 bg-white/10 backdrop-blur-sm rounded-lg text-white text-xs font-medium hover:bg-white/20 transition-colors mb-2"
+              >
+                <CameraIcon className="w-4 h-4 mr-1" />
+                Change
+                <input
+                  id="profile-upload"
+                  type="file"
+                  ref={profileImageInputRef}
+                  className="hidden"
+                  accept="image/*"
+                  onChange={(e) => handleImageUpload(e, 'profile')}
+                  disabled={uploadingImage}
+                />
+              </label>
+              
+              {profileData.profilePicture && (
+                <button
+                  type="button"
+                  onClick={() => handleDeleteImage('profile')}
+                  className="flex items-center justify-center px-3 py-1 bg-red-500/20 backdrop-blur-sm rounded-lg text-white text-xs font-medium hover:bg-red-500/40 transition-colors"
+                  disabled={uploadingImage}
+                >
+                  <TrashIcon className="w-4 h-4 mr-1" />
+                  Delete
+                </button>
+              )}
+            </div>
           )}
           {isEditing && (
             <label
