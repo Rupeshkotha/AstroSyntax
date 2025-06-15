@@ -69,8 +69,8 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
       </div>
 
       {/* Main Content */}
-      <div className="pl-64">
-        <main className="p-8">
+      <div className="ml-64 flex-1 flex flex-col items-center">
+        <main className="flex-1 w-full max-w-7xl px-8 py-8">
           {children}
         </main>
       </div>
