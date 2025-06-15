@@ -19,11 +19,11 @@ interface NavItem {
 
 const navigation: NavItem[] = [
   { name: 'Overview', path: '/dashboard', icon: HomeIcon },
-  { name: 'My Projects', path: '/dashboard/projects', icon: ChartBarIcon },
+  { name: 'Hackathons', path: '/hackathons', icon: CalendarIcon },
   { name: 'Team Hub', path: '/teams', icon: UserGroupIcon },
   { name: 'Idea Generator', path: '/ideagenerator', icon: LightBulbIcon },
-  { name: 'Hackathons', path: '/hackathons', icon: CalendarIcon },
   { name: 'Community Hub', path: '/dashboard/community', icon: ChatBubbleLeftRightIcon },
+  { name: 'Discussions', path: '/discussions', icon: ChartBarIcon },
   { name: 'Resources', path: '/dashboard/resources', icon: BookOpenIcon },
   { name: 'Profile', path: '/profile', icon: UserCircleIcon },
 ];

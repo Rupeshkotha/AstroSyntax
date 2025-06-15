@@ -16,6 +16,8 @@ import DashboardLayout from './components/layout/DashboardLayout';
 import Resources from './pages/Resources';
 import CommunityHub from './components/community/CommunityHub';
 import WriteBlog from './components/community/WriteBlog';
+import Discussions from './pages/Discussions';
+import Messages from './pages/Messages';
 import './App.css';
 
 const App: React.FC = () => {
@@ -79,6 +81,27 @@ const App: React.FC = () => {
             </ProtectedRoute>
           }
         />
+
+        <Route
+          path="/discussions"
+          element={
+            <ProtectedRoute>
+              <Navbar />
+              <Discussions />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/messages"
+          element={
+            <ProtectedRoute>
+              <Navbar />
+              <Messages />
+            </ProtectedRoute>
+          }
+        />
+
         <Route
           path="/teams"
           element={

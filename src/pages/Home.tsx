@@ -210,7 +210,7 @@ const Home: React.FC = () => {
                 <UserGroupIcon className="w-5 h-5 ml-2 group-hover:scale-110 transition-transform" />
               </span>
             </Link>
-            <Link to="/ideas" className="group px-8 py-4 border-2 border-yellow-500 text-yellow-400 hover:bg-yellow-500 hover:text-black font-semibold rounded-lg transition-all duration-300 transform hover:scale-105">
+            <Link to="/ideagenerator" className="group px-8 py-4 border-2 border-yellow-500 text-yellow-400 hover:bg-yellow-500 hover:text-black font-semibold rounded-lg transition-all duration-300 transform hover:scale-105">
               <span className="flex items-center">
                 Get AI Ideas
                 <LightBulbIcon className="w-5 h-5 ml-2 group-hover:animate-pulse transition-transform" />

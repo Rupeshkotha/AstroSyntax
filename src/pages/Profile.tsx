@@ -19,6 +19,7 @@ import {
   CameraIcon,
   TrashIcon,
   DocumentTextIcon,
+  ChatBubbleLeftRightIcon,
 } from '@heroicons/react/24/outline';
 
 // Initialize Cloudinary
@@ -225,6 +226,11 @@ const Profile: React.FC = () => {
   const { currentUser } = useAuth();
   const { userId } = useParams();
   const navigate = useNavigate();
+  const handleMessageClick = () => {
+    if (userId) {
+      navigate(`/messages?userId=${userId}`);
+    }
+  };
   const [isEditing, setIsEditing] = useState(false);
   const [profileData, setProfileData] = useState<UserProfileData>({
     id: '',
@@ -728,6 +734,18 @@ const Profile: React.FC = () => {
                 >
                   <PencilIcon className="h-5 w-5 mr-2" />
                   {isEditing ? 'Done Editing' : 'Edit Profile'}
+                </button>
+              </div>
+            )}
+
+            {userId && currentUser?.uid !== userId && (
+              <div className="flex-shrink-0 mt-4 md:mt-0 animate-fadeInUp delay-400">
+                <button
+                  onClick={handleMessageClick}
+                  className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+                >
+                  <ChatBubbleLeftRightIcon className="h-5 w-5 mr-2" />
+                  Message
                 </button>
               </div>
             )}
