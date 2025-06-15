@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Team, TeamMember, createTeam, updateTeam, getTeam } from '../utils/teamUtils';
 import { UserProfileData } from '../utils/firestoreUtils';
+import { PencilIcon, XMarkIcon, PlusIcon, UserGroupIcon, SparklesIcon, ChatBubbleLeftIcon, CalendarIcon } from '@heroicons/react/24/outline';
 
 interface TeamFormProps {
   onSuccess?: () => void;
@@ -207,55 +208,72 @@ const TeamForm: React.FC<TeamFormProps> = ({ initialData, onSubmit, onCancel, lo
   const isHackathonPreselected = !!initialData?.hackathonId;
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 bg-gray-900 p-6 rounded-lg">
+    <form onSubmit={handleSubmit} className="space-y-6">
       {error && (
-        <div className="bg-red-900/50 text-red-200 p-3 rounded-md text-sm">
-          {error}
+        <div className="bg-red-500/10 border border-red-500/20 text-red-200 p-4 rounded-xl flex items-center space-x-3">
+          <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>{error}</span>
         </div>
       )}
 
       {teamCode && (
-        <div className="bg-green-900/50 p-4 rounded-md">
-          <p className="text-sm font-medium text-green-200">Team Code: {teamCode}</p>
-          <p className="text-xs text-green-300 mt-1">Share this code with others to join your team</p>
+        <div className="bg-green-500/10 border border-green-500/20 p-4 rounded-xl">
+          <div className="flex items-center space-x-3">
+            <div className="flex-shrink-0">
+              <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
+                <SparklesIcon className="w-5 h-5 text-green-400" />
+              </div>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-green-200">Team Code: {teamCode}</p>
+              <p className="text-xs text-green-300 mt-1">Share this code with others to join your team</p>
+            </div>
+          </div>
         </div>
       )}
 
-      <div>
-        <label htmlFor="hackathonName" className="block text-base font-semibold text-gray-200 mb-2">
-          Hackathon Name
-        </label>
-        <input
-          type="text"
-          id="hackathonName"
-          value={formData.hackathonName || ''}
-          onChange={(e) => setFormData(prev => ({ ...prev, hackathonName: e.target.value }))}
-          placeholder="Enter hackathon name"
-          className="mt-1 block w-full rounded-md bg-gray-800 border-gray-700 text-gray-200 text-base py-2.5 px-4 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-          required={!isHackathonPreselected}
-          readOnly={isHackathonPreselected}
-          disabled={isHackathonPreselected}
-        />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-2">
+          <label htmlFor="hackathonName" className="block text-sm font-medium text-gray-300 flex items-center space-x-2">
+            <CalendarIcon className="w-4 h-4 text-purple-400" />
+            <span>Hackathon Name</span>
+          </label>
+          <input
+            type="text"
+            id="hackathonName"
+            value={formData.hackathonName || ''}
+            onChange={(e) => setFormData(prev => ({ ...prev, hackathonName: e.target.value }))}
+            placeholder="Enter hackathon name"
+            className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-transparent transition-all duration-300"
+            required={!isHackathonPreselected}
+            readOnly={isHackathonPreselected}
+            disabled={isHackathonPreselected}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <label htmlFor="name" className="block text-sm font-medium text-gray-300 flex items-center space-x-2">
+            <UserGroupIcon className="w-4 h-4 text-purple-400" />
+            <span>Team Name</span>
+          </label>
+          <input
+            type="text"
+            id="name"
+            value={formData.name}
+            onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+            placeholder="Enter your team name"
+            className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-transparent transition-all duration-300"
+            required
+          />
+        </div>
       </div>
 
-      <div>
-        <label htmlFor="name" className="block text-base font-semibold text-gray-200 mb-2">
-          Team Name
-        </label>
-        <input
-          type="text"
-          id="name"
-          value={formData.name}
-          onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-          placeholder="Enter your team name"
-          className="mt-1 block w-full rounded-md bg-gray-800 border-gray-700 text-gray-200 text-base py-2.5 px-4 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-          required
-        />
-      </div>
-
-      <div>
-        <label htmlFor="description" className="block text-base font-semibold text-gray-200 mb-2">
-          Description
+      <div className="space-y-2">
+        <label htmlFor="description" className="block text-sm font-medium text-gray-300 flex items-center space-x-2">
+          <ChatBubbleLeftIcon className="w-4 h-4 text-purple-400" />
+          <span>Description</span>
         </label>
         <textarea
           id="description"
@@ -263,14 +281,15 @@ const TeamForm: React.FC<TeamFormProps> = ({ initialData, onSubmit, onCancel, lo
           onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
           placeholder="Describe your team and project..."
           rows={3}
-          className="mt-1 block w-full rounded-md bg-gray-800 border-gray-700 text-gray-200 text-base py-2.5 px-4 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+          className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-transparent transition-all duration-300 resize-none"
           required
         />
       </div>
 
-      <div>
-        <label htmlFor="requiredSkills" className="block text-base font-semibold text-gray-200 mb-2">
-          Required Skills
+      <div className="space-y-2">
+        <label htmlFor="requiredSkills" className="block text-sm font-medium text-gray-300 flex items-center space-x-2">
+          <SparklesIcon className="w-4 h-4 text-purple-400" />
+          <span>Required Skills</span>
         </label>
         <div className="relative">
           <input
@@ -285,14 +304,14 @@ const TeamForm: React.FC<TeamFormProps> = ({ initialData, onSubmit, onCancel, lo
               }
             }}
             placeholder="Add required skills (e.g., React, Node.js)"
-            className="input w-full"
+            className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-transparent transition-all duration-300"
           />
           {skillSuggestions.length > 0 && skillInput && (
-            <ul className="absolute z-10 w-full bg-gray-700 border border-gray-600 rounded-md mt-1 max-h-48 overflow-y-auto shadow-lg">
+            <ul className="absolute z-10 w-full mt-1 bg-gray-800 border border-gray-700 rounded-xl shadow-lg max-h-48 overflow-y-auto">
               {skillSuggestions.map((skill) => (
                 <li
                   key={skill}
-                  className="px-4 py-2 hover:bg-gray-600 cursor-pointer text-gray-200"
+                  className="px-4 py-2 hover:bg-purple-500/20 cursor-pointer text-gray-200 transition-colors duration-200"
                   onClick={() => handleSkillSuggestionClick(skill)}
                 >
                   {skill}
@@ -301,31 +320,30 @@ const TeamForm: React.FC<TeamFormProps> = ({ initialData, onSubmit, onCancel, lo
             </ul>
           )}
         </div>
-        <div className="mt-2 flex flex-wrap gap-2">
+        
+        <div className="flex flex-wrap gap-2 mt-3">
           {formData.requiredSkills?.map((skill) => (
             <span
               key={skill}
-              className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-500 bg-opacity-20 text-blue-400"
+              className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-300 border border-purple-500/30 hover:from-purple-500/30 hover:to-pink-500/30 transition-all duration-300"
             >
               {skill}
               <button
                 type="button"
-                className="ml-2 -mr-0.5 h-4 w-4 rounded-full flex items-center justify-center text-blue-400 hover:text-white"
+                className="ml-2 -mr-0.5 h-4 w-4 rounded-full flex items-center justify-center text-purple-400 hover:text-white hover:bg-purple-500/50 transition-all duration-200"
                 onClick={() => removeSkill(skill)}
               >
-                <span className="sr-only">Remove skill</span>
-                <svg className="h-2 w-2" stroke="currentColor" fill="none" viewBox="0 0 8 8">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M1 1l6 6m0-6L1 7" />
-                </svg>
+                <XMarkIcon className="h-3 w-3" />
               </button>
             </span>
           ))}
         </div>
       </div>
 
-      <div>
-        <label htmlFor="maxMembers" className="block text-base font-semibold text-gray-200 mb-2">
-          Maximum Team Size
+      <div className="space-y-2">
+        <label htmlFor="maxMembers" className="block text-sm font-medium text-gray-300 flex items-center space-x-2">
+          <UserGroupIcon className="w-4 h-4 text-purple-400" />
+          <span>Maximum Team Size</span>
         </label>
         <input
           type="number"
@@ -335,26 +353,26 @@ const TeamForm: React.FC<TeamFormProps> = ({ initialData, onSubmit, onCancel, lo
           value={formData.maxMembers}
           onChange={(e) => setFormData(prev => ({ ...prev, maxMembers: parseInt(e.target.value) }))}
           placeholder="Enter maximum team size (2-10)"
-          className="mt-1 block w-full rounded-md bg-gray-800 border-gray-700 text-gray-200 text-base py-2.5 px-4 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+          className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-transparent transition-all duration-300"
           required
         />
-        <p className="text-xs text-text-secondary mt-1">
+        <p className="text-xs text-gray-400 mt-1">
           Minimum: 2 members, Maximum: 10 members
         </p>
       </div>
 
-      <div className="flex justify-end space-x-3">
+      <div className="flex justify-end space-x-3 pt-4 border-t border-white/10">
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-md border border-gray-700 bg-gray-800 px-5 py-2.5 text-base font-medium text-gray-200 shadow-sm hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-900"
+          className="px-4 py-2 text-gray-300 hover:text-white transition-colors duration-200"
         >
           Cancel
         </button>
         <button
           type="submit"
           disabled={isFormSubmitting || loading}
-          className="inline-flex justify-center rounded-md border border-transparent bg-indigo-600 px-5 py-2.5 text-base font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-900"
+          className="px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-lg transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
         >
           {isFormSubmitting || loading ? (
             <span className="flex items-center">

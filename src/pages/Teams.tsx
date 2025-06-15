@@ -8,6 +8,7 @@ import SkillMatch from '../components/SkillMatch';
 import { query, collection, getDocs, where } from 'firebase/firestore';
 import { db } from '../firebase';
 import TeamChat from '../components/TeamChat';
+import { PlusIcon, UserGroupIcon, SparklesIcon } from '@heroicons/react/24/outline';
 
 const Teams: React.FC = () => {
   const { currentUser } = useAuth();
@@ -391,240 +392,285 @@ const Teams: React.FC = () => {
   if (isLoading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+        <div className="relative">
+          <div className="w-16 h-16 border-4 border-purple-500/20 rounded-full"></div>
+          <div className="w-16 h-16 border-4 border-purple-500 rounded-full animate-spin absolute top-0 left-0 border-t-transparent"></div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Teams</h1>
-          <p className="mt-1 text-sm text-gray-500">Manage your teams and join others</p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900/20 to-slate-900">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {/* Header Section */}
+        <div className="relative mb-12">
+          <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-3xl blur-3xl"></div>
+          <div className="relative">
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent">
+              Teams
+            </h1>
+            <p className="mt-2 text-lg text-gray-300">
+              Join forces with talented developers and build something amazing
+            </p>
+          </div>
         </div>
-        <div className="flex space-x-4">
+
+        {/* Action Buttons */}
+        <div className="flex flex-wrap gap-4 mb-8">
           <button
-            onClick={() => {setShowJoinModal(true); setError('');}} // Clear previous errors on opening
-            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            onClick={() => {setShowJoinModal(true); setError('');}}
+            className="group relative px-6 py-3 bg-white/5 hover:bg-white/10 rounded-xl transition-all duration-300 overflow-hidden"
           >
-            Join Team
+            <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-pink-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            <div className="relative flex items-center gap-2">
+              <UserGroupIcon className="w-5 h-5 text-purple-400" />
+              <span className="text-gray-200">Join Team</span>
+            </div>
           </button>
           <button
-            onClick={() => {setShowCreateModal(true); setError('');}} // Clear previous errors on opening
-            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            onClick={() => {setShowCreateModal(true); setError('');}}
+            className="group relative px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 rounded-xl transition-all duration-300 overflow-hidden"
           >
-            Create Team
+            <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            <div className="relative flex items-center gap-2">
+              <PlusIcon className="w-5 h-5 text-white" />
+              <span className="text-white font-medium">Create Team</span>
+            </div>
           </button>
         </div>
-      </div>
 
-      {error && (
-        <div className="mb-4 bg-red-50 text-red-500 p-4 rounded-md">
-          {error}
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {teams.length === 0 && !isLoading && !error && (
-          <div className="col-span-full text-center text-gray-500">
-            No teams found. Create one or join an existing team!
+        {/* Error Message */}
+        {error && (
+          <div className="mb-8 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 animate-fade-in">
+            {error}
           </div>
         )}
-        {teams.map((team) => (
-          <TeamCard
-            key={team.id}
-            team={team}
-            onEdit={() => setEditingTeam(team)}
-            onDelete={() => handleDeleteTeam(team.id)}
-            onJoin={() => handleRequestToJoinTeam(team)}
-            onLeave={() => handleLeaveTeam(team)}
-            onRemoveMember={(memberId) => handleRemoveMember(team.id, memberId)}
-            onAcceptRequest={(memberId) => handleAcceptRequest(team.id, memberId)}
-            onRejectRequest={(memberId) => handleRejectRequest(team.id, memberId)}
-            onSkillMatch={() => handleSkillMatch(team)}
-            onOpenChat={() => handleOpenChat(team)}
-          />
-        ))}
-      </div>
 
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-gradient-to-br from-background to-surface/50 rounded-xl max-w-2xl w-full shadow-2xl border border-white/10 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6 pb-4 px-8 pt-8">
-              <div>
-                <h2 className="text-2xl font-bold gradient-text">Create New Team</h2>
-                <p className="text-text-secondary mt-1">Fill in the details to create your dream team</p>
+        {/* Teams Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {teams.length === 0 && !isLoading && !error && (
+            <div className="col-span-full text-center py-12">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-purple-500/10 mb-4">
+                <SparklesIcon className="w-8 h-8 text-purple-400" />
               </div>
-              <button
-                onClick={() => setShowCreateModal(false)}
-                className="text-text-secondary hover:text-text transition-colors"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+              <h3 className="text-xl font-semibold text-gray-200 mb-2">No Teams Found</h3>
+              <p className="text-gray-400">Create your own team or join an existing one to get started!</p>
             </div>
-            <div className="px-8 pb-8">
-              <TeamForm
-                onSubmit={handleCreateTeam}
-                onCancel={() => setShowCreateModal(false)}
+          )}
+          {teams.map((team) => (
+            <div key={team.id} className="transform transition-all duration-300 hover:scale-[1.02]">
+              <TeamCard
+                team={team}
+                onEdit={() => setEditingTeam(team)}
+                onDelete={() => handleDeleteTeam(team.id)}
+                onJoin={() => handleRequestToJoinTeam(team)}
+                onLeave={() => handleLeaveTeam(team)}
+                onRemoveMember={(memberId) => handleRemoveMember(team.id, memberId)}
+                onAcceptRequest={(memberId) => handleAcceptRequest(team.id, memberId)}
+                onRejectRequest={(memberId) => handleRejectRequest(team.id, memberId)}
+                onSkillMatch={() => handleSkillMatch(team)}
+                onOpenChat={() => handleOpenChat(team)}
               />
             </div>
-          </div>
+          ))}
         </div>
-      )}
 
-      {showJoinModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-gradient-to-br from-background to-surface/50 rounded-xl max-w-md w-full p-8 shadow-2xl border border-white/10">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold gradient-text">Join Team</h2>
-              <button
-                onClick={() => {
-                  setShowJoinModal(false);
-                  setTeamCode('');
-                  setError('');
-                }}
-                className="text-text-secondary hover:text-text transition-colors"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+        {/* Pending Requests Section */}
+        {currentUser && pendingRequests.length > 0 && (
+          <div className="mt-12">
+            <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent mb-6">
+              Pending Join Requests
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {pendingRequests.map((team) => (
+                <div
+                  key={team.id}
+                  className="bg-white/5 hover:bg-white/10 rounded-xl p-6 border border-white/10 transition-all duration-300"
+                >
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="text-lg font-semibold text-white">{team.name}</h3>
+                      <p className="text-gray-400 text-sm mt-1">{team.description}</p>
+                    </div>
+                    <button
+                      onClick={() => handleCancelRequest(team.id)}
+                      className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-colors duration-300"
+                    >
+                      Cancel Request
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
-            <form onSubmit={handleJoinByCode} className="space-y-6">
-              <div>
-                <label htmlFor="teamCode" className="block text-sm font-medium text-text-secondary mb-2">
-                  Team Code
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    id="teamCode"
-                    value={teamCode}
-                    onChange={(e) => setTeamCode(e.target.value.toUpperCase())}
-                    placeholder="Enter 6-digit code"
-                    className="input w-full pl-10 text-center tracking-widest font-mono text-lg"
-                    maxLength={6}
-                    required
-                  />
-                  <svg className="w-5 h-5 text-text-secondary absolute left-3 top-1/2 transform -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-                  </svg>
+          </div>
+        )}
+
+        {/* Modals */}
+        {showCreateModal && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl max-w-2xl w-full shadow-2xl border border-white/10 max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-6 pb-4 px-8 pt-8 border-b border-white/10">
+                <div>
+                  <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                    Create New Team
+                  </h2>
+                  <p className="text-gray-400 mt-1">Fill in the details to create your dream team</p>
                 </div>
-                <p className="mt-2 text-sm text-text-secondary">
-                  Enter the 6-digit team code provided by your team lead
-                </p>
-              </div>
-              {error && (
-                <div className="p-4 rounded-xl bg-error/20 border border-error/30 text-error flex items-center space-x-3">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span>{error}</span>
-                </div>
-              )}
-              <div className="flex justify-end space-x-3 pt-4 border-t border-surface">
                 <button
-                  type="button"
+                  onClick={() => setShowCreateModal(false)}
+                  className="text-gray-400 hover:text-white transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="px-8 pb-8">
+                <TeamForm
+                  onSubmit={handleCreateTeam}
+                  onCancel={() => setShowCreateModal(false)}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Join Team Modal */}
+        {showJoinModal && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl max-w-md w-full p-8 shadow-2xl border border-white/10">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                  Join Team
+                </h2>
+                <button
                   onClick={() => {
                     setShowJoinModal(false);
                     setTeamCode('');
                     setError('');
                   }}
-                  className="btn btn-outline hover:bg-surface/50"
+                  className="text-gray-400 hover:text-white transition-colors"
                 >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="btn btn-primary"
-                >
-                  Join Team
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
                 </button>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {editingTeam && (
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 z-50"> {/* Added z-index */}
-          <div className="bg-white rounded-lg max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto"> {/* Added max height and overflow */}
-            <h2 className="text-xl font-semibold mb-4">Edit Team</h2>
-            <TeamForm
-              initialData={editingTeam}
-              onSubmit={handleEditTeam}
-              onCancel={() => setEditingTeam(null)}
-            />
-          </div>
-        </div>
-      )}
-
-      {showSkillMatch && selectedTeam && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl font-bold">Find Team Members</h2>
-              <button
-                onClick={() => setShowSkillMatch(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                ✕
-              </button>
-            </div>
-            <SkillMatch
-              team={selectedTeam}
-              onMatch={handleMatch}
-              onSkip={handleSkip}
-            />
-          </div>
-        </div>
-      )}
-
-      {showChatModal && chatTeam && (
-        <div className="fixed inset-0 z-50">
-          <div className="bg-gray-900 w-full h-full flex flex-col">
-            <div className="flex justify-between items-center p-4 border-b border-gray-700">
-              {/* <h2 className="text-xl font-bold text-white">{chatTeam.name} Chat</h2> Remove or comment out this line */}
-              <button
-                onClick={handleCloseChat}
-                className="text-gray-400 hover:text-white transition-colors"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="flex-1">
-              <TeamChat teamId={chatTeam.id} teamName={chatTeam.name} teamMembers={chatTeam.members} />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {pendingRequests.length > 0 && (
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold mb-4">Your Pending Join Requests</h2>
-          <div className="grid grid-cols-1 gap-4">
-            {pendingRequests.map((team) => (
-              <div key={team.id} className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <h3 className="text-lg font-semibold">{team.name}</h3>
-                    <p className="text-gray-400">{team.description}</p>
-                  </div>
+              <form onSubmit={handleJoinByCode} className="space-y-6">
+                <div>
+                  <label htmlFor="teamCode" className="block text-sm font-medium text-gray-300 mb-2">
+                    Enter Team Code
+                  </label>
+                  <input
+                    type="text"
+                    id="teamCode"
+                    value={teamCode}
+                    onChange={(e) => setTeamCode(e.target.value)}
+                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-transparent transition-all duration-300"
+                    placeholder="Enter the team code"
+                  />
+                </div>
+                <div className="flex justify-end space-x-3 pt-4 border-t border-white/10">
                   <button
-                    onClick={() => handleCancelRequest(team.id)}
-                    className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+                    type="button"
+                    onClick={() => {
+                      setShowJoinModal(false);
+                      setTeamCode('');
+                      setError('');
+                    }}
+                    className="px-4 py-2 text-gray-300 hover:text-white transition-colors"
                   >
-                    Cancel Request
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-lg transition-all duration-300"
+                  >
+                    Join Team
                   </button>
                 </div>
-              </div>
-            ))}
+              </form>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+
+        {/* Edit Team Modal */}
+        {editingTeam && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl max-w-2xl w-full p-8 shadow-2xl border border-white/10 max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                  Edit Team
+                </h2>
+                <button
+                  onClick={() => setEditingTeam(null)}
+                  className="text-gray-400 hover:text-white transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <TeamForm
+                initialData={editingTeam}
+                onSubmit={handleEditTeam}
+                onCancel={() => setEditingTeam(null)}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Skill Match Modal */}
+        {showSkillMatch && selectedTeam && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+            <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl p-8 max-w-2xl w-full mx-4 shadow-2xl border border-white/10">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                  Find Team Members
+                </h2>
+                <button
+                  onClick={() => setShowSkillMatch(false)}
+                  className="text-gray-400 hover:text-white transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <SkillMatch
+                team={selectedTeam}
+                onMatch={handleMatch}
+                onSkip={handleSkip}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Team Chat Modal */}
+        {showChatModal && chatTeam && (
+          <div className="fixed inset-0 z-50">
+            <div className="bg-gradient-to-br from-slate-900 to-slate-800 w-full h-full flex flex-col">
+              <div className="flex justify-between items-center p-4 border-b border-white/10">
+                <h2 className="text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                  {chatTeam.name} Chat
+                </h2>
+                <button
+                  onClick={handleCloseChat}
+                  className="text-gray-400 hover:text-white transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="flex-1">
+                <TeamChat teamId={chatTeam.id} teamName={chatTeam.name} teamMembers={chatTeam.members} />
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
