@@ -665,7 +665,9 @@ const Teams: React.FC = () => {
                 </button>
               </div>
               <div className="flex-1">
-                <TeamChat teamId={chatTeam.id} teamName={chatTeam.name} teamMembers={chatTeam.members} />
+                {chatTeam.hackathonId && (
+                  <TeamChat teamId={chatTeam.id} hackathonId={chatTeam.hackathonId} />
+                )}
               </div>
             </div>
           </div>

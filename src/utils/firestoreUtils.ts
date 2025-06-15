@@ -1,4 +1,4 @@
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import axios from 'axios';
@@ -198,10 +198,16 @@ export const sendTeamMessage = async (
       
       // Create notifications for all team members except the sender
       const notificationPromises = members
-        .filter((memberId: string) => memberId !== senderId)
-        .map((memberId: string) => 
-          createNotification(
-            memberId,
+        .filter((member: any) => member && typeof member.id === 'string' && member.id !== senderId)
+        .map((member: any) => {
+          const recipientId = member.id;
+          if (typeof recipientId !== 'string') {
+            console.warn('Skipping notification for invalid recipientId:', recipientId);
+            return Promise.resolve(); // Return a resolved promise to prevent Promise.all from failing
+          }
+          console.log('Processing member for notification, member.id:', recipientId);
+          return createNotification(
+            recipientId,
             'NEW_MESSAGE',
             'New Team Message',
             `${senderName}: ${text}`,
@@ -209,8 +215,8 @@ export const sendTeamMessage = async (
             teamId,
             senderId,
             senderName
-          )
-        );
+          );
+        });
       
       await Promise.all(notificationPromises);
     }
@@ -371,5 +377,38 @@ export const uploadProfileImage = async (
     }
     
     throw new Error(`Failed to upload ${type} image: ${error.message || 'Unknown error'}`);
+  }
+};
+
+// Function to update a team message
+export const updateTeamMessage = async (
+  teamId: string,
+  messageId: string,
+  newText: string
+) => {
+  try {
+    const messageRef = doc(db, 'teams', teamId, 'messages', messageId);
+    await updateDoc(messageRef, {
+      text: newText,
+      edited: true,
+      editedAt: serverTimestamp()
+    });
+  } catch (error) {
+    console.error('Error updating message:', error);
+    throw error;
+  }
+};
+
+// Function to delete a team message
+export const deleteTeamMessage = async (
+  teamId: string,
+  messageId: string
+) => {
+  try {
+    const messageRef = doc(db, 'teams', teamId, 'messages', messageId);
+    await deleteDoc(messageRef);
+  } catch (error) {
+    console.error('Error deleting message:', error);
+    throw error;
   }
 };
