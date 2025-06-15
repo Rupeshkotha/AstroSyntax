@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LightBulbIcon } from '@heroicons/react/24/outline';
+import { LightBulbIcon, SparklesIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import { AnimatePresence, motion } from 'framer-motion';
 
 type Mode = 'surprise' | 'guided' | 'problem';
@@ -97,122 +97,206 @@ const IdeaGenerator: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-white to-gray-100 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-6">
       <div className="max-w-6xl mx-auto space-y-8">
-        <div className="text-center">
-          <h1 className="text-4xl font-bold text-gray-900">✨ AI Idea Generator</h1>
-          <p className="text-gray-600 mt-2">Craft tailored, high-impact project ideas instantly</p>
-        </div>
+        {/* Header Section */}
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center space-y-4"
+        >
+          <h1 className="text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-500">
+            AI Idea Generator
+          </h1>
+          <p className="text-gray-400 text-lg">
+            Let AI help you discover innovative project ideas
+          </p>
+        </motion.div>
 
         {/* Mode Selector */}
-        <div className="flex justify-center gap-4">
-        {['surprise', 'guided', 'problem'].map((m) => (
-          <button
-            key={m}
-            onClick={() => setMode(m as Mode)}
-            className={`px-5 py-2 rounded-full transition font-medium border shadow-sm
-              ${mode === m
-                ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-md scale-105'
-                : 'bg-white text-gray-800 hover:bg-gray-100 border-gray-300'}`}
-          >
-            {m === 'surprise' && 'Surprise Me'}
-            {m === 'guided' && 'Based on Interests'}
-            {m === 'problem' && 'I Have a Problem'}
-          </button>
-        ))}
-        </div>
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex justify-center gap-4"
+        >
+          {[
+            { id: 'surprise', label: 'Surprise Me', icon: SparklesIcon },
+            { id: 'guided', label: 'Based on Interests', icon: LightBulbIcon },
+            { id: 'problem', label: 'I Have a Problem', icon: ArrowPathIcon }
+          ].map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => setMode(id as Mode)}
+              className={`group px-6 py-3 rounded-xl transition-all duration-300 flex items-center gap-2
+                ${mode === id
+                  ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg scale-105'
+                  : 'bg-gray-800/50 text-gray-300 hover:bg-gray-800 border border-gray-700'}`}
+            >
+              <Icon className="w-5 h-5" />
+              {label}
+            </button>
+          ))}
+        </motion.div>
 
         {/* Input Fields */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto">
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="bg-gray-800/50 rounded-2xl p-6 border border-gray-700"
+        >
           {mode === 'guided' && (
-            <>
-              <input
-                type="text"
-                placeholder="Technology (e.g., AI, Blockchain)"
-                value={technology}
-                onChange={(e) => setTechnology(e.target.value)}
-                className="input"
-              />
-              <input
-                type="text"
-                placeholder="Field of Interest (e.g., Health, Finance)"
-                value={interests}
-                onChange={(e) => setInterests(e.target.value)}
-                className="input"
-              />
-              <input
-                type="text"
-                placeholder="Theme (e.g., Sustainability, Education)"
-                value={theme}
-                onChange={(e) => setTheme(e.target.value)}
-                className="input col-span-full"
-              />
-            </>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-400">Technology</label>
+                <input
+                  type="text"
+                  placeholder="e.g., AI, Blockchain, Web3"
+                  value={technology}
+                  onChange={(e) => setTechnology(e.target.value)}
+                  className="w-full px-4 py-3 bg-gray-900/50 border border-gray-700 rounded-xl text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-transparent transition-all duration-300"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-400">Field of Interest</label>
+                <input
+                  type="text"
+                  placeholder="e.g., Health, Finance, Education"
+                  value={interests}
+                  onChange={(e) => setInterests(e.target.value)}
+                  className="w-full px-4 py-3 bg-gray-900/50 border border-gray-700 rounded-xl text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-transparent transition-all duration-300"
+                />
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <label className="text-sm font-medium text-gray-400">Theme</label>
+                <input
+                  type="text"
+                  placeholder="e.g., Sustainability, Innovation, Social Impact"
+                  value={theme}
+                  onChange={(e) => setTheme(e.target.value)}
+                  className="w-full px-4 py-3 bg-gray-900/50 border border-gray-700 rounded-xl text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-transparent transition-all duration-300"
+                />
+              </div>
+            </div>
           )}
 
           {mode === 'problem' && (
-            <textarea
-              placeholder="Describe your problem statement here..."
-              value={problemStatement}
-              onChange={(e) => setProblemStatement(e.target.value)}
-              className="input col-span-full min-h-[120px]"
-            />
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-400">Problem Statement</label>
+              <textarea
+                placeholder="Describe the problem you want to solve..."
+                value={problemStatement}
+                onChange={(e) => setProblemStatement(e.target.value)}
+                className="w-full px-4 py-3 bg-gray-900/50 border border-gray-700 rounded-xl text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-transparent transition-all duration-300 min-h-[120px] resize-none"
+              />
+            </div>
           )}
-        </div>
+        </motion.div>
 
         {/* Generate Button */}
-        <div className="text-center">
-        <button
-          onClick={handleGenerate}
-          disabled={loading}
-          className="inline-flex items-center gap-2 px-6 py-3 rounded-full font-semibold text-white transition 
-            bg-gradient-to-br from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 
-            active:scale-95 shadow-md disabled:opacity-60 disabled:cursor-not-allowed"
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex justify-center"
         >
-          <LightBulbIcon className="w-5 h-5" />
-          {loading ? 'Generating...' : 'Generate Ideas'}
-        </button>
-          {error && <p className="text-red-600 mt-3">{error}</p>}
-        </div>
+          <button
+            onClick={handleGenerate}
+            disabled={loading}
+            className="group px-8 py-4 rounded-xl font-semibold text-white transition-all duration-300 
+              bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 
+              active:scale-95 shadow-lg disabled:opacity-60 disabled:cursor-not-allowed
+              flex items-center gap-2"
+          >
+            {loading ? (
+              <>
+                <ArrowPathIcon className="w-5 h-5 animate-spin" />
+                Generating Ideas...
+              </>
+            ) : (
+              <>
+                <LightBulbIcon className="w-5 h-5 group-hover:animate-pulse" />
+                Generate Ideas
+              </>
+            )}
+          </button>
+        </motion.div>
+
+        {error && (
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl p-4"
+          >
+            {error}
+          </motion.div>
+        )}
 
         {/* Idea Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {ideas.map((idea, index) => (
-            <div key={index} className="p-5 bg-white border rounded-xl shadow-sm hover:shadow-md transition">
-              <h3 className="text-xl font-bold text-blue-700">{idea.title}</h3>
-              <p className="text-gray-800 mt-2">
-                <strong className="text-gray-900">Problem:</strong> {idea.problem}
-              </p>
+        <AnimatePresence>
+          {ideas.length > 0 && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="grid grid-cols-1 md:grid-cols-2 gap-6"
+            >
+              {ideas.map((idea, index) => (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                  className="bg-gray-800/50 border border-gray-700 rounded-2xl p-6 hover:shadow-lg transition-all duration-300"
+                >
+                  <h3 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">
+                    {idea.title}
+                  </h3>
+                  <p className="text-gray-300 mt-3">
+                    <span className="text-gray-400">Problem:</span> {idea.problem}
+                  </p>
 
-              <AnimatePresence initial={false}>
-                {expandedIndex === index && (
-                  <motion.div
-                    key="details"
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="overflow-hidden mt-4 space-y-2 text-sm text-gray-700"
+                  <AnimatePresence>
+                    {expandedIndex === index && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="mt-4 space-y-3 text-sm text-gray-300"
+                      >
+                        <div>
+                          <span className="text-gray-400">Solution:</span> {idea.solution}
+                        </div>
+                        <div>
+                          <span className="text-gray-400">Tech Stack:</span> {idea.techStack}
+                        </div>
+                        <div>
+                          <span className="text-gray-400">Bonus Features:</span> {idea.bonus}
+                        </div>
+                        <div>
+                          <span className="text-gray-400">Demo Plan:</span> {idea.demo}
+                        </div>
+                        <div>
+                          <span className="text-gray-400">Target Audience:</span> {idea.audience}
+                        </div>
+                        <div>
+                          <span className="text-gray-400">Difficulty:</span> {idea.difficulty}
+                        </div>
+                        <div>
+                          <span className="text-gray-400">Resources:</span> {idea.resources}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  <button
+                    onClick={() => setExpandedIndex(expandedIndex === index ? null : index)}
+                    className="mt-4 text-sm text-blue-400 hover:text-blue-300 transition-colors duration-200"
                   >
-                    <p><strong>Solution:</strong> {idea.solution}</p>
-                    <p><strong>Tech Stack:</strong> {idea.techStack}</p>
-                    <p><strong>Bonus Features:</strong> {idea.bonus}</p>
-                    <p><strong>Demo Plan:</strong> {idea.demo}</p>
-                    <p><strong>Target Audience:</strong> {idea.audience}</p>
-                    <p><strong>Difficulty:</strong> {idea.difficulty}</p>
-                    <p><strong>Resources:</strong> {idea.resources}</p>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              <button
-                onClick={() => setExpandedIndex(expandedIndex === index ? null : index)}
-                className="mt-3 text-sm text-blue-600 hover:underline"
-              >
-                {expandedIndex === index ? 'Show less' : 'Read more'}
-              </button>
-            </div>
-          ))}
-        </div>
+                    {expandedIndex === index ? 'Show less' : 'Read more'}
+                  </button>
+                </motion.div>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
