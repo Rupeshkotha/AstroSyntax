@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, updateDoc, arrayUnion, getDoc, deleteDoc, getDocs } from 'firebase/firestore';
+import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, updateDoc, getDoc, deleteDoc, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
@@ -23,6 +23,7 @@ import {
   StarIcon as StarSolidIcon,
   SparklesIcon as SparklesSolidIcon
 } from '@heroicons/react/24/solid';
+import { HeartIcon as HeartSolidIconOutline } from '@heroicons/react/24/solid';
 
 interface Reaction {
   type: string;
@@ -64,7 +65,7 @@ const Discussions: React.FC = () => {
   const [replies, setReplies] = useState<{ [key: string]: Reply[] }>({});
   const [newDiscussion, setNewDiscussion] = useState({ title: '', content: '' });
   const [newReply, setNewReply] = useState({ discussionId: '', content: '' });
-  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [expandedDiscussionId, setExpandedDiscussionId] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -118,7 +119,7 @@ const Discussions: React.FC = () => {
       const discussionData = {
         title: newDiscussion.title,
         content: newDiscussion.content,
-        author: currentUser.displayName || 'Anonymous',
+        author: currentUser.displayName || currentUser.email?.split('@')[0] || 'Anonymous',
         authorId: currentUser.uid,
         timestamp: serverTimestamp(),
         reactions: []
@@ -133,34 +134,23 @@ const Discussions: React.FC = () => {
 
   const handleNewReply = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentUser || !replyingTo) return;
+    if (!currentUser || !newReply.discussionId) return;
 
     try {
       const replyData = {
         content: newReply.content,
-        author: currentUser.displayName || 'Anonymous',
+        author: currentUser.displayName || currentUser.email?.split('@')[0] || 'Anonymous',
         authorId: currentUser.uid,
         timestamp: serverTimestamp(),
         reactions: []
       };
 
-      await addDoc(collection(db, 'discussions', replyingTo, 'replies'), replyData);
+      await addDoc(collection(db, 'discussions', newReply.discussionId, 'replies'), replyData);
 
       setNewReply({ discussionId: '', content: '' });
-      setReplyingTo(null);
     } catch (error) {
       console.error('Error adding reply:', error);
     }
-  };
-
-  const startReply = (discussionId: string) => {
-    setReplyingTo(discussionId);
-    setNewReply({ discussionId, content: '' });
-  };
-
-  const cancelReply = () => {
-    setReplyingTo(null);
-    setNewReply({ discussionId: '', content: '' });
   };
 
   const handleReaction = async (discussionId: string, reactionType: string, replyId?: string) => {
@@ -170,71 +160,56 @@ const Discussions: React.FC = () => {
       if (replyId) {
         const replyRef = doc(db, 'discussions', discussionId, 'replies', replyId);
         const replyDoc = await getDoc(replyRef);
-        
         if (!replyDoc.exists()) return;
-
         const reply = replyDoc.data();
-        const reactions = [...(reply.reactions || [])];
-        
-        reactions.forEach(reaction => {
-          reaction.users = reaction.users.filter((id: string) => id !== currentUser.uid);
-        });
-        
-        const filteredReactions = reactions.filter(reaction => reaction.users.length > 0);
-        
-        const reactionIndex = filteredReactions.findIndex(r => r.type === reactionType);
+        let reactions = [...(reply.reactions || [])];
+        const reactionIndex = reactions.findIndex(r => r.type === reactionType);
         if (reactionIndex === -1) {
-          filteredReactions.push({ type: reactionType, users: [currentUser.uid] });
+          // Add new reaction
+          reactions.push({ type: reactionType, users: [currentUser.uid] });
         } else {
-          filteredReactions[reactionIndex].users.push(currentUser.uid);
+          const users = reactions[reactionIndex].users;
+          if (users.includes(currentUser.uid)) {
+            // Unlike: remove user
+            reactions[reactionIndex].users = users.filter((id: string) => id !== currentUser.uid);
+            // Remove reaction if no users left
+            if (reactions[reactionIndex].users.length === 0) {
+              reactions.splice(reactionIndex, 1);
+            }
+          } else {
+            // Like: add user
+            reactions[reactionIndex].users.push(currentUser.uid);
+          }
         }
-
-        await updateDoc(replyRef, { reactions: filteredReactions });
+        await updateDoc(replyRef, { reactions });
       } else {
         const discussionRef = doc(db, 'discussions', discussionId);
         const discussion = discussions.find(d => d.id === discussionId);
-        
         if (!discussion) return;
-
-        const reactions = [...discussion.reactions];
-        
-        reactions.forEach(reaction => {
-          reaction.users = reaction.users.filter((id: string) => id !== currentUser.uid);
-        });
-        
-        const filteredReactions = reactions.filter(reaction => reaction.users.length > 0);
-        
-        const reactionIndex = filteredReactions.findIndex(r => r.type === reactionType);
+        let reactions = [...discussion.reactions];
+        const reactionIndex = reactions.findIndex(r => r.type === reactionType);
         if (reactionIndex === -1) {
-          filteredReactions.push({ type: reactionType, users: [currentUser.uid] });
+          // Add new reaction
+          reactions.push({ type: reactionType, users: [currentUser.uid] });
         } else {
-          filteredReactions[reactionIndex].users.push(currentUser.uid);
+          const users = reactions[reactionIndex].users;
+          if (users.includes(currentUser.uid)) {
+            // Unlike: remove user
+            reactions[reactionIndex].users = users.filter((id: string) => id !== currentUser.uid);
+            // Remove reaction if no users left
+            if (reactions[reactionIndex].users.length === 0) {
+              reactions.splice(reactionIndex, 1);
+            }
+          } else {
+            // Like: add user
+            reactions[reactionIndex].users.push(currentUser.uid);
+          }
         }
-
-        await updateDoc(discussionRef, { reactions: filteredReactions });
+        await updateDoc(discussionRef, { reactions });
       }
     } catch (error) {
       console.error('Error updating reactions:', error);
     }
-  };
-
-  const ReactionButton = ({ type, count, isActive, onClick }: { type: string; count: number; isActive: boolean; onClick: () => void }) => {
-    const reactionConfig = reactionTypes.find(r => r.type === type);
-    if (!reactionConfig) return null;
-
-    const Icon = isActive ? reactionConfig.solidIcon : reactionConfig.icon;
-
-    return (
-      <button
-        onClick={onClick}
-        className={`flex items-center space-x-1 px-2 py-1 rounded-full transition-colors ${
-          isActive ? `${reactionConfig.color} bg-${reactionConfig.color.split('-')[1]}/10` : 'text-gray-500 hover:text-gray-700'
-        }`}
-      >
-        <Icon className="w-4 h-4" />
-        {count > 0 && <span className="text-sm">{count}</span>}
-      </button>
-    );
   };
 
   const UserLink: React.FC<{ userId: string; children: React.ReactNode }> = ({ userId, children }) => {
@@ -307,173 +282,183 @@ const Discussions: React.FC = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <h1 className="text-3xl font-bold text-gray-900 mb-8">Discussions</h1>
-
-      {/* New Discussion Form */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-8">
-        <div className="p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Start a Discussion</h2>
-          <form onSubmit={handleNewDiscussion}>
-            <input
-              type="text"
-              placeholder="Title"
-              className="input input-bordered w-full mb-4 bg-gray-50 text-gray-900 placeholder-gray-500"
-              value={newDiscussion.title}
-              onChange={(e) => setNewDiscussion({ ...newDiscussion, title: e.target.value })}
-              required
-            />
-            <textarea
-              placeholder="What's on your mind?"
-              className="textarea textarea-bordered w-full mb-4 bg-gray-50 text-gray-900 placeholder-gray-500"
-              value={newDiscussion.content}
-              onChange={(e) => setNewDiscussion({ ...newDiscussion, content: e.target.value })}
-              required
-            />
-            <button type="submit" className="btn btn-primary">
-              Post Discussion
-            </button>
-          </form>
-        </div>
+    <div className="max-w-3xl mx-auto px-4 py-10">
+      {/* Header */}
+      <div className="mb-10 text-center">
+        <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 mb-2">Discussions</h1>
+        <p className="text-lg text-gray-300">Ask questions, share ideas, and connect with the community.</p>
       </div>
 
-      {/* Discussions List */}
+      {/* Start a Discussion Card */}
+      <div className="mb-10 bg-slate-800/80 border border-white/10 rounded-2xl shadow-xl p-8 backdrop-blur-lg">
+        <h2 className="text-2xl font-bold text-white mb-4">Start a Discussion</h2>
+        <form onSubmit={handleNewDiscussion} className="space-y-4">
+          <input
+            type="text"
+            placeholder="Title"
+            className="w-full px-4 py-3 rounded-lg bg-slate-900/60 border border-white/10 text-white text-lg focus:outline-none focus:ring-2 focus:ring-purple-500 placeholder-gray-400"
+            value={newDiscussion.title}
+            onChange={e => setNewDiscussion({ ...newDiscussion, title: e.target.value })}
+            required
+          />
+          <textarea
+            placeholder="What's on your mind?"
+            className="w-full px-4 py-3 rounded-lg bg-slate-900/40 border border-white/10 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 placeholder-gray-400 min-h-[100px]"
+            value={newDiscussion.content}
+            onChange={e => setNewDiscussion({ ...newDiscussion, content: e.target.value })}
+            required
+          />
+          <button
+            type="submit"
+            className="w-full py-3 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold text-lg shadow-md hover:from-purple-600 hover:to-pink-600 transition-all"
+          >
+            Post Discussion
+          </button>
+        </form>
+      </div>
+
+      {/* Discussion List */}
       <div className="space-y-6">
-        {discussions.map((discussion) => (
-          <div key={discussion.id} className="bg-white rounded-lg shadow-sm border border-gray-200">
-            <div className="p-6">
-              <div className="flex justify-between items-start mb-4">
-                <h3 className="text-xl font-semibold text-gray-900">{discussion.title}</h3>
-                {currentUser?.uid === discussion.authorId && (
-                  <button
-                    onClick={() => handleDeleteDiscussion(discussion.id)}
-                    className="text-red-600 hover:text-red-800 p-1 rounded-full hover:bg-red-50"
-                    title="Delete discussion"
-                  >
-                    <TrashIcon className="h-5 w-5" />
-                  </button>
-                )}
-              </div>
-              <p className="text-gray-700 mb-4">{discussion.content}</p>
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <UserLink userId={discussion.authorId}>
-                    {discussion.author}
-                  </UserLink>
-                  <span className="text-gray-500">•</span>
-                  <span className="text-gray-500 text-sm">
-                    {new Date(discussion.timestamp?.toDate?.() || discussion.timestamp).toLocaleDateString()}
-                  </span>
+        {discussions.length === 0 ? (
+          <div className="text-center text-gray-400 py-12">No discussions yet. Be the first to start one!</div>
+        ) : (
+          discussions.map((discussion) => {
+            const isExpanded = expandedDiscussionId === discussion.id;
+            const userLiked = currentUser?.uid
+              ? discussion.reactions?.find(r => r.type === 'like')?.users.includes(currentUser.uid) || false
+              : false;
+            return (
+              <div
+                key={discussion.id}
+                className="bg-slate-800/80 border border-white/10 rounded-2xl shadow-lg p-6 flex flex-col md:flex-row items-start md:items-center gap-4 hover:shadow-2xl transition-shadow group mb-6"
+              >
+                {/* Avatar */}
+                <div className="flex-shrink-0 w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-xl font-bold shadow-md">
+                  {discussion.author?.[0]?.toUpperCase() || <span>?</span>}
                 </div>
-                <div className="flex space-x-2">
-                  {reactionTypes.map(({ type }) => {
-                    const reaction = discussion.reactions.find(r => r.type === type);
-                    const count = reaction?.users.length || 0;
-                    const isActive = reaction?.users.includes(currentUser?.uid || '') || false;
-                    return (
-                      <ReactionButton
-                        key={type}
-                        type={type}
-                        count={count}
-                        isActive={isActive}
-                        onClick={() => handleReaction(discussion.id, type)}
-                      />
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Replies Section */}
-              <div className="space-y-4 mt-6">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-semibold text-gray-900">Replies</h4>
-                  <button
-                    onClick={() => startReply(discussion.id)}
-                    className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                  >
-                    Reply
-                  </button>
-                </div>
-
-                {/* Reply Form */}
-                {replyingTo === discussion.id && (
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <form onSubmit={handleNewReply}>
-                      <textarea
-                        placeholder="Write your reply..."
-                        className="textarea textarea-bordered w-full mb-4 bg-white text-gray-900 placeholder-gray-500"
-                        value={newReply.content}
-                        onChange={(e) => setNewReply({ ...newReply, content: e.target.value })}
-                        required
-                      />
-                      <div className="flex justify-end space-x-2">
-                        <button
-                          type="button"
-                          onClick={cancelReply}
-                          className="btn btn-ghost"
-                        >
-                          Cancel
-                        </button>
-                        <button 
-                          type="submit" 
-                          className="btn btn-primary"
-                          disabled={!newReply.content.trim()}
-                        >
-                          Post Reply
-                        </button>
-                      </div>
-                    </form>
-                  </div>
-                )}
-
-                {/* Replies List */}
-                {replies[discussion.id]?.map((reply) => (
-                  <div key={reply.id} className="pl-4 border-l-2 border-gray-200">
-                    <div className="flex justify-between items-start mb-2">
-                      <p className="text-gray-700">{reply.content}</p>
-                      {currentUser?.uid === reply.authorId && (
-                        <button
-                          onClick={() => handleDeleteReply(discussion.id, reply.id)}
-                          className="text-red-600 hover:text-red-800 p-1 rounded-full hover:bg-red-50 ml-2"
-                          title="Delete reply"
-                        >
-                          <TrashIcon className="h-4 w-4" />
-                        </button>
-                      )}
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <UserLink userId={reply.authorId}>
-                          {reply.author}
-                        </UserLink>
-                        <span className="text-gray-500">•</span>
-                        <span className="text-gray-500 text-sm">
-                          {new Date(reply.timestamp?.toDate?.() || reply.timestamp).toLocaleDateString()}
-                        </span>
-                      </div>
-                      <div className="flex space-x-2">
-                        {reactionTypes.map(({ type }) => {
-                          const reaction = reply.reactions.find(r => r.type === type);
-                          const count = reaction?.users.length || 0;
-                          const isActive = reaction?.users.includes(currentUser?.uid || '') || false;
-                          return (
-                            <ReactionButton
-                              key={type}
-                              type={type}
-                              count={count}
-                              isActive={isActive}
-                              onClick={() => handleReaction(discussion.id, type, reply.id)}
-                            />
-                          );
-                        })}
-                      </div>
+                {/* Main Content */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                    <h3 className="text-xl font-bold text-white group-hover:text-purple-300 transition-colors truncate">{discussion.title}</h3>
+                    <div className="flex items-center gap-2 text-sm text-gray-400">
+                      <span>by {discussion.author || 'Unknown'}</span>
+                      <span className="mx-1">•</span>
+                      <span>{discussion.timestamp?.toDate ? new Date(discussion.timestamp.toDate()).toLocaleDateString() : ''}</span>
                     </div>
                   </div>
-                ))}
+                  <p className="text-gray-300 mt-2 line-clamp-2">{discussion.content}</p>
+                  {/* Replies Section (Expandable) */}
+                  {isExpanded && (
+                    <div className="w-full mt-6 animate-fade-in">
+                      <div className="space-y-4">
+                        {replies[discussion.id]?.length === 0 ? (
+                          <div className="text-gray-400 text-center">No replies yet.</div>
+                        ) : (
+                          replies[discussion.id]?.map((reply) => {
+                            const replyLiked = currentUser?.uid
+                              ? reply.reactions?.find(r => r.type === 'like')?.users.includes(currentUser.uid) || false
+                              : false;
+                            const replyLikeCount = reply.reactions?.find(r => r.type === 'like')?.users.length || 0;
+                            return (
+                              <div key={reply.id} className="flex items-start gap-3 bg-slate-900/60 border border-white/10 rounded-xl p-4">
+                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold">
+                                  {reply.author?.[0]?.toUpperCase() || <span>?</span>}
+                                </div>
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 text-sm text-gray-400 mb-1">
+                                    <UserLink userId={reply.authorId}>{reply.author || 'Unknown'}</UserLink>
+                                    <span className="mx-1">•</span>
+                                    <span>{reply.timestamp?.toDate ? new Date(reply.timestamp.toDate()).toLocaleDateString() : ''}</span>
+                                    {currentUser?.uid === reply.authorId && (
+                                      <button
+                                        onClick={() => handleDeleteReply(discussion.id, reply.id)}
+                                        className="ml-2 text-red-400 hover:text-red-600"
+                                        title="Delete reply"
+                                      >
+                                        <TrashIcon className="w-4 h-4" />
+                                      </button>
+                                    )}
+                                  </div>
+                                  <div className="text-gray-200">{reply.content}</div>
+                                </div>
+                                {/* Like button for reply */}
+                                <button
+                                  onClick={() => handleReaction(discussion.id, 'like', reply.id)}
+                                  className={`ml-2 flex items-center gap-1 px-2 py-1 rounded-full transition-colors ${replyLiked ? 'text-pink-400 bg-pink-400/10' : 'text-gray-400 hover:text-pink-400'}`}
+                                >
+                                  {replyLiked ? <HeartSolidIcon className="w-5 h-5" /> : <HeartIcon className="w-5 h-5" />}
+                                  <span className="text-sm">{replyLikeCount}</span>
+                                </button>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                      {/* Add Reply Form */}
+                      <form onSubmit={e => { setNewReply({ discussionId: discussion.id, content: newReply.content }); handleNewReply(e); }} className="mt-6 flex flex-col gap-2">
+                        <textarea
+                          placeholder="Write your reply..."
+                          className="w-full px-4 py-3 rounded-lg bg-slate-900/40 border border-white/10 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 placeholder-gray-400 min-h-[60px]"
+                          value={isExpanded ? newReply.content : ''}
+                          onChange={e => setNewReply({ discussionId: discussion.id, content: e.target.value })}
+                          required
+                        />
+                        <div className="flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setExpandedDiscussionId(null)}
+                            className="px-4 py-2 rounded-lg bg-slate-700 text-gray-300 hover:bg-slate-600 transition-all"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="submit"
+                            className="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold shadow hover:from-purple-600 hover:to-pink-600 transition-all"
+                            disabled={!newReply.content.trim()}
+                          >
+                            Post Reply
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+                  )}
+                </div>
+                {/* Actions */}
+                <div className="flex flex-col items-end gap-2 md:ml-4">
+                  <div className="flex items-center gap-4 text-gray-400">
+                    <span className="flex items-center gap-1"><svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M17 8h2a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V10a2 2 0 012-2h2"></path><path strokeLinecap="round" strokeLinejoin="round" d="M15 3h-6a2 2 0 00-2 2v3h10V5a2 2 0 00-2-2z"></path></svg> {replies[discussion.id]?.length || 0}</span>
+                    {/* Like button for discussion */}
+                    <button
+                      onClick={() => handleReaction(discussion.id, 'like')}
+                      className={`flex items-center gap-1 px-2 py-1 rounded-full transition-colors ${userLiked ? 'text-pink-400 bg-pink-400/10' : 'text-gray-400 hover:text-pink-400'}`}
+                    >
+                      {userLiked ? <HeartSolidIcon className="w-5 h-5" /> : <HeartIcon className="w-5 h-5" />}
+                      <span className="text-sm">{discussion.reactions?.find(r => r.type === 'like')?.users.length || 0}</span>
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setExpandedDiscussionId(isExpanded ? null : discussion.id);
+                      setNewReply({ discussionId: discussion.id, content: '' });
+                    }}
+                    className="mt-2 px-4 py-2 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold shadow hover:from-purple-600 hover:to-pink-600 transition-all text-sm"
+                  >
+                    {isExpanded ? 'Hide Replies' : 'View & Reply'}
+                  </button>
+                  {currentUser?.uid === discussion.authorId && (
+                    <button
+                      onClick={() => handleDeleteDiscussion(discussion.id)}
+                      className="text-red-400 hover:text-red-600 ml-2"
+                      title="Delete discussion"
+                    >
+                      <TrashIcon className="w-5 h-5" />
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
-          </div>
-        ))}
+            );
+          })
+        )}
       </div>
     </div>
   );

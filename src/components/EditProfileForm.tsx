@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { UserProfileData, saveUserProfile, uploadProfileImage } from '../utils/firestoreUtils';
+import { UserProfileData, saveUserProfile, uploadProfileImage, Skill } from '../utils/firestoreUtils';
 import { TrashIcon, PlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../contexts/AuthContext';
 import { doc, setDoc } from 'firebase/firestore';
@@ -146,15 +146,43 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({ initialData, onSave, 
     }
   };
 
+  const handleSkillCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>, index: number) => {
+    const newSkills = [...formData.technicalSkills];
+    newSkills[index] = {
+      ...newSkills[index],
+      category: e.target.value as Skill['category']
+    };
+    setFormData(prev => ({
+      ...prev,
+      technicalSkills: newSkills
+    }));
+  };
+
+  const handleSkillProficiencyChange = (e: React.ChangeEvent<HTMLSelectElement>, index: number) => {
+    const newSkills = [...formData.technicalSkills];
+    newSkills[index] = {
+      ...newSkills[index],
+      proficiency: e.target.value as Skill['proficiency']
+    };
+    setFormData(prev => ({
+      ...prev,
+      technicalSkills: newSkills
+    }));
+  };
+
   const handleSkillSuggestionClick = (suggestion: string) => {
     if (activeSkillIndex !== -1) {
       const newSkills = [...formData.technicalSkills];
       newSkills[activeSkillIndex] = {
+        id: newSkills[activeSkillIndex].id, // Preserve existing id
         name: suggestion,
         category: newSkills[activeSkillIndex].category,
         proficiency: newSkills[activeSkillIndex].proficiency
       };
-      setFormData(prev => ({ ...prev, technicalSkills: newSkills }));
+      setFormData(prev => ({
+        ...prev,
+        technicalSkills: newSkills
+      }));
       setSkillInputs(prev => ({ ...prev, [activeSkillIndex]: suggestion }));
       setSkillSuggestions([]);
       setActiveSkillIndex(-1);
@@ -963,11 +991,7 @@ const addEducation = () => {
                 </div>
                 <select
                   value={skill.category}
-                  onChange={(e) => {
-                    const newSkills = [...formData.technicalSkills];
-                    newSkills[index].category = e.target.value as any;
-                    setFormData(prev => ({ ...prev, technicalSkills: newSkills }));
-                  }}
+                  onChange={(e) => handleSkillCategoryChange(e, index)}
                   className="px-4 py-2.5 rounded-lg bg-gray-700/50 border border-gray-600 text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
                 >
                   <option value="frontend">Frontend</option>
@@ -979,11 +1003,7 @@ const addEducation = () => {
                 </select>
                 <select
                   value={skill.proficiency}
-                  onChange={(e) => {
-                    const newSkills = [...formData.technicalSkills];
-                    newSkills[index].proficiency = e.target.value as any;
-                    setFormData(prev => ({ ...prev, technicalSkills: newSkills }));
-                  }}
+                  onChange={(e) => handleSkillProficiencyChange(e, index)}
                   className="px-4 py-2.5 rounded-lg bg-gray-700/50 border border-gray-600 text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
                 >
                   <option value="beginner">Beginner</option>
@@ -1014,7 +1034,12 @@ const addEducation = () => {
             onClick={() => {
               setFormData(prev => ({
                 ...prev,
-                technicalSkills: [...prev.technicalSkills, { name: '', category: 'other', proficiency: 'beginner' }]
+                technicalSkills: [...prev.technicalSkills, {
+                  id: crypto.randomUUID(),
+                  name: '',
+                  category: 'other' as const,
+                  proficiency: 'beginner' as const
+                }]
               }));
             }}
             className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-800 transition-colors duration-200"

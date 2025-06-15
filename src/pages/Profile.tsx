@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { saveUserProfile, getUserProfileData, UserProfileData, uploadProfileImage } from '../utils/firestoreUtils';
+import { saveUserProfile, getUserProfileData, UserProfileData, uploadProfileImage, Skill } from '../utils/firestoreUtils';
 import EditProfileForm from '../components/EditProfileForm';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -72,12 +72,6 @@ const commonSkills = [
   'UML', 'UML Diagrams', 'Refactoring', 'Debugging', 'Unit Testing',
   'Integration Testing', 'JIRA', 'Confluence', 'Visual Studio Code', 'Eclipse', 'IntelliJ IDEA'
 ];
-
-interface Skill {
-  name: string;
-  category: 'frontend' | 'backend' | 'ml' | 'design' | 'devops' | 'other';
-  proficiency: 'beginner' | 'intermediate' | 'advanced' | 'expert';
-}
 
 interface Experience {
   id: string;
@@ -255,10 +249,12 @@ const Profile: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [skillSuggestions, setSkillSuggestions] = useState<string[]>([]);
   const [activeSkillIndex, setActiveSkillIndex] = useState<number>(-1);
-  const [skillInputs, setSkillInputs] = useState<{ [key: number]: string }>({});
   const [uploadingImage, setUploadingImage] = useState(false);
   const profileImageInputRef = useRef<HTMLInputElement>(null);
   const coverImageInputRef = useRef<HTMLInputElement>(null);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [filteredSuggestions, setFilteredSuggestions] = useState<string[]>([]);
+  const suggestionInputSkillIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     const loadProfileData = async () => {
@@ -275,7 +271,12 @@ const Profile: React.FC = () => {
         if (userDoc.exists()) {
           const data = await getUserProfileData(targetUserId);
           if (data) {
-            setProfileData(data);
+            // Ensure all loaded skills have an ID
+            const skillsWithIds = data.technicalSkills.map(skill => ({ 
+              ...skill, 
+              id: skill.id || crypto.randomUUID() 
+            }));
+            setProfileData({ ...data, technicalSkills: skillsWithIds });
           } else {
             setProfileData({
               id: currentUser.uid || '',
@@ -356,37 +357,46 @@ const Profile: React.FC = () => {
     }
   };
 
-  const handleSkillInputChange = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
-    const value = e.target.value;
-    setSkillInputs(prev => ({ ...prev, [index]: value }));
+  const handleSkillInputChange = (e: React.ChangeEvent<HTMLInputElement>, skillId: string) => {
+    setProfileData(prev => ({
+      ...prev,
+      technicalSkills: prev.technicalSkills.map(skill =>
+        skill.id === skillId ? { ...skill, name: e.target.value } : skill
+      ),
+    }));
+  };
 
-    // Filter suggestions based on input
-    if (value.trim()) {
-      const filtered = commonSkills.filter(skill => 
-        skill.toLowerCase().includes(value.toLowerCase()) &&
-        !profileData.technicalSkills.some(s => s.name.toLowerCase() === skill.toLowerCase())
-      );
-      setSkillSuggestions(filtered.slice(0, 5));
-      setActiveSkillIndex(index);
-    } else {
-      setSkillSuggestions([]);
-      setActiveSkillIndex(-1);
-    }
+  const handleSkillCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>, skillId: string) => {
+    setProfileData(prev => ({
+      ...prev,
+      technicalSkills: prev.technicalSkills.map(skill =>
+        skill.id === skillId ? { ...skill, category: e.target.value as Skill['category'] } : skill
+      ),
+    }));
+  };
+
+  const handleSkillProficiencyChange = (e: React.ChangeEvent<HTMLSelectElement>, skillId: string) => {
+    setProfileData(prev => ({
+      ...prev,
+      technicalSkills: prev.technicalSkills.map(skill =>
+        skill.id === skillId ? { ...skill, proficiency: e.target.value as Skill['proficiency'] } : skill
+      ),
+    }));
   };
 
   const handleSkillSuggestionClick = (suggestion: string) => {
-    if (activeSkillIndex !== -1) {
-      const newSkills = [...profileData.technicalSkills];
-      newSkills[activeSkillIndex] = {
-        name: suggestion,
-        category: newSkills[activeSkillIndex].category,
-        proficiency: newSkills[activeSkillIndex].proficiency
-      };
-      setProfileData((prev: UserProfileData) => ({ ...prev, technicalSkills: newSkills }));
-      setSkillInputs(prev => ({ ...prev, [activeSkillIndex]: suggestion }));
-      setSkillSuggestions([]);
-      setActiveSkillIndex(-1);
+    const activeSkillId = suggestionInputSkillIdRef.current;
+    if (activeSkillId) {
+      setProfileData(prev => ({
+        ...prev,
+        technicalSkills: prev.technicalSkills.map(skill =>
+          skill.id === activeSkillId ? { ...skill, name: suggestion } : skill
+        ),
+      }));
     }
+    setShowSuggestions(false);
+    setFilteredSuggestions([]);
+    suggestionInputSkillIdRef.current = null;
   };
 
   const handleDeleteImage = async (type: 'profile' | 'cover') => {
@@ -795,34 +805,38 @@ const Profile: React.FC = () => {
               {isEditing ? (
                 <div className="space-y-6">
                   {Object.entries(
-                    (profileData.technicalSkills || []).reduce((acc: Record<string, Skill[]>, skill: Skill) => {
+                    (profileData.technicalSkills || []).reduce<Record<string, Skill[]>>((acc, skill) => {
                       if (!acc[skill.category]) acc[skill.category] = [];
                       acc[skill.category].push(skill);
                       return acc;
-                    }, {} as Record<string, Skill[]>)
+                    }, {})
                   ).map(([category, skills]) => (
                     <div key={category} className="space-y-4">
                       <h3 className="text-lg font-medium text-gray-300 capitalize">{category}</h3>
                       <div className="flex flex-wrap gap-3">
-                        {(skills as Skill[]).map((skill: Skill, index: number) => (
+                        {skills.map((skill) => (
                           <div
-                            key={index}
+                            key={skill.id}
                             className="group relative flex items-center px-4 py-2 bg-slate-700/30 border border-slate-600 rounded-xl focus-within:border-purple-500 transition-colors duration-200"
                           >
                             <input
                               type="text"
-                              value={skillInputs[index] || skill.name}
-                              onChange={(e) => handleSkillInputChange(e, index)}
+                              value={skill.name}
+                              onChange={(e) => handleSkillInputChange(e, skill.id)}
                               className="bg-transparent text-white placeholder-gray-400 focus:outline-none w-full"
                               placeholder="Skill name"
+                              onFocus={() => {
+                                setShowSuggestions(true);
+                                suggestionInputSkillIdRef.current = skill.id;
+                              }}
+                              onBlur={() => {
+                                setTimeout(() => setShowSuggestions(false), 200);
+                                suggestionInputSkillIdRef.current = null;
+                              }}
                             />
                             <select
                               value={skill.proficiency}
-                              onChange={(e) => {
-                                const newSkills = [...profileData.technicalSkills];
-                                newSkills[index].proficiency = e.target.value as 'beginner' | 'intermediate' | 'advanced' | 'expert';
-                                setProfileData((prev: UserProfileData) => ({ ...prev, technicalSkills: newSkills }));
-                              }}
+                              onChange={(e) => handleSkillProficiencyChange(e, skill.id)}
                               className="ml-2 bg-slate-800/50 text-white rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 border border-slate-700 hover:border-purple-500 transition-colors duration-200"
                             >
                               <option value="beginner">Beginner</option>
@@ -830,23 +844,49 @@ const Profile: React.FC = () => {
                               <option value="advanced">Advanced</option>
                               <option value="expert">Expert</option>
                             </select>
+                            <select
+                              value={skill.category}
+                              onChange={(e) => handleSkillCategoryChange(e, skill.id)}
+                              className="ml-2 bg-slate-800/50 text-white rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 border border-slate-700 hover:border-purple-500 transition-colors duration-200"
+                            >
+                              <option value="frontend">Frontend</option>
+                              <option value="backend">Backend</option>
+                              <option value="ml">ML</option>
+                              <option value="design">Design</option>
+                              <option value="devops">DevOps</option>
+                              <option value="other">Other</option>
+                            </select>
                             <button
                               onClick={() => {
-                                const newSkills = profileData.technicalSkills.filter((_, i) => i !== index);
+                                const newSkills = profileData.technicalSkills.filter((s) => s.id !== skill.id);
                                 setProfileData((prev: UserProfileData) => ({ ...prev, technicalSkills: newSkills }));
                               }}
                               className="ml-2 text-gray-400 hover:text-red-400 transition-colors transform hover:scale-105"
                             >
                               <XMarkIcon className="h-5 w-5" />
                             </button>
+                            {showSuggestions && suggestionInputSkillIdRef.current === skill.id && filteredSuggestions.length > 0 && (
+                              <div className="absolute z-10 bg-slate-700 border border-white/10 rounded-md shadow-lg mt-2 w-full left-0 top-full max-h-48 overflow-y-auto" style={{ zIndex: 10 }}>
+                                {filteredSuggestions.map((suggestion, sIndex) => (
+                                  <div
+                                    key={sIndex}
+                                    className="px-4 py-2 text-white hover:bg-slate-600 cursor-pointer"
+                                    onMouseDown={() => handleSkillSuggestionClick(suggestion)}
+                                  >
+                                    {suggestion}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         ))}
                         <button
                           onClick={() => {
-                            const newSkills = [...profileData.technicalSkills, { 
-                              name: '', 
-                              category: 'other' as const, 
-                              proficiency: 'beginner' as const 
+                            const newSkills = [...profileData.technicalSkills, {
+                              id: crypto.randomUUID(),
+                              name: '',
+                              category: 'other' as const,
+                              proficiency: 'beginner' as const
                             }];
                             setProfileData((prev: UserProfileData) => ({ ...prev, technicalSkills: newSkills }));
                           }}
@@ -861,17 +901,17 @@ const Profile: React.FC = () => {
               ) : (
                 <div className="space-y-6">
                   {Object.entries(
-                    (profileData.technicalSkills || []).reduce((acc: Record<string, Skill[]>, skill: Skill) => {
+                    (profileData.technicalSkills || []).reduce<Record<string, Skill[]>>((acc, skill) => {
                       if (!acc[skill.category]) acc[skill.category] = [];
                       acc[skill.category].push(skill);
                       return acc;
-                    }, {} as Record<string, Skill[]>)
+                    }, {})
                   ).map(([category, skills]) => (
                     <div key={category}>
                       <h3 className="text-lg font-medium text-gray-300 capitalize mb-4">{category}</h3>
                       <div className="flex flex-wrap gap-3">
-                        {(skills as Skill[]).map((skill: Skill, index: number) => (
-                          <SkillBadge key={index} skill={skill} index={index} />
+                        {(skills as Skill[]).map((skill: Skill) => (
+                          <SkillBadge key={skill.id} skill={skill} index={0} />
                         ))}
                       </div>
                     </div>

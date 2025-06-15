@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { 
   collection, 
@@ -21,6 +21,7 @@ import { db } from '../firebase';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import { PaperAirplaneIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { useSearchParams } from 'react-router-dom';
+import '../styles/custom.css';
 
 interface Message {
   id: string;
@@ -50,6 +51,8 @@ const Messages: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [isTyping, setIsTyping] = useState(false);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Initialize chat with user from URL
   useEffect(() => {
@@ -284,6 +287,23 @@ const Messages: React.FC = () => {
     }
   };
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewMessage(e.target.value);
+    
+    // Simulate typing indicator
+    if (e.target.value.trim()) {
+      setIsTyping(true);
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      typingTimeoutRef.current = setTimeout(() => {
+        setIsTyping(false);
+      }, 2000);
+    } else {
+      setIsTyping(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <DashboardLayout>
@@ -297,23 +317,23 @@ const Messages: React.FC = () => {
   return (
     <DashboardLayout>
       <div className="max-w-7xl mx-auto h-[calc(100vh-4rem)]">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 h-full flex">
+        <div className="bg-gray-900 rounded-xl shadow-xl border border-gray-700 h-full flex overflow-hidden">
           {/* Chat List */}
-          <div className="w-1/4 border-r border-gray-200 flex flex-col">
-            <div className="p-4 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">Conversations</h2>
+          <div className="w-1/4 border-r border-gray-700 flex flex-col bg-gray-800/50">
+            <div className="p-4 border-b border-gray-700 bg-gradient-to-r from-gray-800 to-gray-700">
+              <h2 className="text-xl font-bold text-white">Messages</h2>
             </div>
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto custom-scrollbar">
               {chats.map(chat => (
                 <button
                   key={chat.id}
-                  className={`w-full p-4 text-left hover:bg-gray-50 ${
-                    selectedChat === chat.id ? 'bg-gray-50' : ''
+                  className={`w-full p-4 text-left hover:bg-gray-700/50 transition-colors duration-200 ${
+                    selectedChat === chat.id ? 'bg-gray-700/50 border-l-4 border-blue-500' : ''
                   }`}
                   onClick={() => setSelectedChat(chat.id)}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200">
+                    <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-700 ring-2 ring-offset-2 ring-offset-gray-800 ring-blue-500">
                       {chat.otherUser.photoURL ? (
                         <img
                           src={chat.otherUser.photoURL}
@@ -321,17 +341,17 @@ const Messages: React.FC = () => {
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-gray-300 text-gray-600">
+                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-500 to-purple-600 text-white text-lg font-semibold">
                           {chat.otherUser.name.charAt(0).toUpperCase()}
                         </div>
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="font-medium text-gray-900 truncate">
+                      <div className="font-semibold text-white truncate">
                         {chat.otherUser.name}
                       </div>
                       {chat.lastMessage && (
-                        <div className="text-sm text-gray-500 truncate">
+                        <div className="text-sm text-gray-400 truncate">
                           {chat.lastMessage.senderId === currentUser?.uid ? 'You: ' : ''}
                           {chat.lastMessage.content}
                         </div>
@@ -344,12 +364,12 @@ const Messages: React.FC = () => {
           </div>
 
           {/* Chat Messages */}
-          <div className="flex-1 flex flex-col">
+          <div className="flex-1 flex flex-col bg-gray-900">
             {selectedChat ? (
               <>
-                <div className="p-4 border-b border-gray-200">
+                <div className="p-4 border-b border-gray-700 bg-gradient-to-r from-gray-800 to-gray-700">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200">
+                    <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-700 ring-2 ring-offset-2 ring-offset-gray-800 ring-blue-500">
                       {chats.find(chat => chat.id === selectedChat)?.otherUser.photoURL ? (
                         <img
                           src={chats.find(chat => chat.id === selectedChat)?.otherUser.photoURL}
@@ -357,30 +377,49 @@ const Messages: React.FC = () => {
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-gray-300 text-gray-600">
+                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-500 to-purple-600 text-white text-lg font-semibold">
                           {chats.find(chat => chat.id === selectedChat)?.otherUser.name.charAt(0).toUpperCase()}
                         </div>
                       )}
                     </div>
-                    <h2 className="text-lg font-semibold text-gray-900">
-                      {chats.find(chat => chat.id === selectedChat)?.otherUser.name}
-                    </h2>
+                    <div>
+                      <h2 className="text-xl font-bold text-white">
+                        {chats.find(chat => chat.id === selectedChat)?.otherUser.name}
+                      </h2>
+                      <p className="text-sm text-gray-400">Online</p>
+                    </div>
                   </div>
                 </div>
-                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                
+                <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
                   {messages.map(message => (
                     <div
                       key={message.id}
                       className={`flex ${
                         message.senderId === currentUser?.uid ? 'justify-end' : 'justify-start'
-                      }`}
+                      } message-enter`}
                     >
-                      <div className="relative group flex items-center">
+                      <div className="relative group flex items-end gap-2">
+                        {message.senderId !== currentUser?.uid && (
+                          <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-700 flex-shrink-0">
+                            {chats.find(chat => chat.id === selectedChat)?.otherUser.photoURL ? (
+                              <img
+                                src={chats.find(chat => chat.id === selectedChat)?.otherUser.photoURL}
+                                alt={chats.find(chat => chat.id === selectedChat)?.otherUser.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-500 to-purple-600 text-white text-sm font-semibold">
+                                {chats.find(chat => chat.id === selectedChat)?.otherUser.name.charAt(0).toUpperCase()}
+                              </div>
+                            )}
+                          </div>
+                        )}
                         <div
-                          className={`max-w-[85%] rounded-lg p-3 ${
+                          className={`max-w-[70%] rounded-2xl p-3 message-bubble ${
                             message.senderId === currentUser?.uid
-                              ? 'bg-blue-600 text-white'
-                              : 'bg-gray-100 text-gray-900'
+                              ? 'bg-blue-600 text-white rounded-br-none'
+                              : 'bg-gray-700 text-white rounded-bl-none'
                           }`}
                         >
                           <div className="text-sm">{message.content}</div>
@@ -391,28 +430,38 @@ const Messages: React.FC = () => {
                         {message.senderId === currentUser?.uid && (
                           <button
                             onClick={() => handleDeleteMessage(message.id)}
-                            className="ml-2 p-2 rounded-full hover:bg-gray-200 transition-colors duration-200"
+                            className="opacity-0 group-hover:opacity-100 p-2 rounded-full hover:bg-gray-700 transition-all duration-200"
                             title="Delete message"
                           >
-                            <TrashIcon className="h-5 w-5 text-gray-500 hover:text-red-500" />
+                            <TrashIcon className="h-4 w-4 text-gray-400 hover:text-red-400" />
                           </button>
                         )}
                       </div>
                     </div>
                   ))}
+                  {isTyping && (
+                    <div className="flex justify-start">
+                      <div className="typing-indicator">
+                        <div className="typing-dot"></div>
+                        <div className="typing-dot"></div>
+                        <div className="typing-dot"></div>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <form onSubmit={sendMessage} className="p-4 border-t border-gray-200">
+                
+                <form onSubmit={sendMessage} className="p-4 border-t border-gray-700 bg-gray-800/50">
                   <div className="flex gap-2">
                     <input
                       type="text"
                       placeholder="Type a message..."
-                      className="input input-bordered flex-1"
+                      className="flex-1 px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
                       value={newMessage}
-                      onChange={(e) => setNewMessage(e.target.value)}
+                      onChange={handleInputChange}
                     />
                     <button
                       type="submit"
-                      className="btn btn-primary"
+                      className="px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-800 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                       disabled={!newMessage.trim()}
                     >
                       <PaperAirplaneIcon className="h-5 w-5" />
@@ -421,8 +470,13 @@ const Messages: React.FC = () => {
                 </form>
               </>
             ) : (
-              <div className="flex-1 flex items-center justify-center text-gray-500">
-                Select a chat or start a new conversation
+              <div className="flex-1 flex items-center justify-center text-gray-400">
+                <div className="text-center">
+                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-700 flex items-center justify-center">
+                    <PaperAirplaneIcon className="h-8 w-8 text-gray-500" />
+                  </div>
+                  <p className="text-lg">Select a chat or start a new conversation</p>
+                </div>
               </div>
             )}
           </div>

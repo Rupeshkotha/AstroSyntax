@@ -2,6 +2,7 @@ import { doc, setDoc } from "firebase/firestore";
 import { db } from "./firebase";
 
 export interface Skill {
+  id: string;
   name: string;
   category: 'frontend' | 'backend' | 'ml' | 'design' | 'devops' | 'other';
   proficiency: 'beginner' | 'intermediate' | 'advanced' | 'expert';

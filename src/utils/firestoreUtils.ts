@@ -5,6 +5,7 @@ import axios from 'axios';
 import { CLOUDINARY_CLOUD_NAME, CLOUDINARY_UPLOAD_PRESET } from '../config/cloudinaryConfig';
 
 export interface Skill {
+  id: string;
   name: string;
   category: 'frontend' | 'backend' | 'ml' | 'design' | 'devops' | 'other';
   proficiency: 'beginner' | 'intermediate' | 'advanced' | 'expert';
