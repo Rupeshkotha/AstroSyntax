@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import DashboardLayout from '../components/layout/DashboardLayout';
 import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, updateDoc, arrayUnion, getDoc, deleteDoc, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Link, useNavigate } from 'react-router-dom';
@@ -308,177 +307,175 @@ const Discussions: React.FC = () => {
   };
 
   return (
-    <DashboardLayout>
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">Discussions</h1>
+    <div className="max-w-4xl mx-auto">
+      <h1 className="text-3xl font-bold text-gray-900 mb-8">Discussions</h1>
 
-        {/* New Discussion Form */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-8">
-          <div className="p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Start a Discussion</h2>
-            <form onSubmit={handleNewDiscussion}>
-              <input
-                type="text"
-                placeholder="Title"
-                className="input input-bordered w-full mb-4 bg-gray-50 text-gray-900 placeholder-gray-500"
-                value={newDiscussion.title}
-                onChange={(e) => setNewDiscussion({ ...newDiscussion, title: e.target.value })}
-                required
-              />
-              <textarea
-                placeholder="What's on your mind?"
-                className="textarea textarea-bordered w-full mb-4 bg-gray-50 text-gray-900 placeholder-gray-500"
-                value={newDiscussion.content}
-                onChange={(e) => setNewDiscussion({ ...newDiscussion, content: e.target.value })}
-                required
-              />
-              <button type="submit" className="btn btn-primary">
-                Post Discussion
-              </button>
-            </form>
-          </div>
-        </div>
-
-        {/* Discussions List */}
-        <div className="space-y-6">
-          {discussions.map((discussion) => (
-            <div key={discussion.id} className="bg-white rounded-lg shadow-sm border border-gray-200">
-              <div className="p-6">
-                <div className="flex justify-between items-start mb-4">
-                  <h3 className="text-xl font-semibold text-gray-900">{discussion.title}</h3>
-                  {currentUser?.uid === discussion.authorId && (
-                    <button
-                      onClick={() => handleDeleteDiscussion(discussion.id)}
-                      className="text-red-600 hover:text-red-800 p-1 rounded-full hover:bg-red-50"
-                      title="Delete discussion"
-                    >
-                      <TrashIcon className="h-5 w-5" />
-                    </button>
-                  )}
-                </div>
-                <p className="text-gray-700 mb-4">{discussion.content}</p>
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <UserLink userId={discussion.authorId}>
-                      {discussion.author}
-                    </UserLink>
-                    <span className="text-gray-500">•</span>
-                    <span className="text-gray-500 text-sm">
-                      {new Date(discussion.timestamp?.toDate?.() || discussion.timestamp).toLocaleDateString()}
-                    </span>
-                  </div>
-                  <div className="flex space-x-2">
-                    {reactionTypes.map(({ type }) => {
-                      const reaction = discussion.reactions.find(r => r.type === type);
-                      const count = reaction?.users.length || 0;
-                      const isActive = reaction?.users.includes(currentUser?.uid || '') || false;
-                      return (
-                        <ReactionButton
-                          key={type}
-                          type={type}
-                          count={count}
-                          isActive={isActive}
-                          onClick={() => handleReaction(discussion.id, type)}
-                        />
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Replies Section */}
-                <div className="space-y-4 mt-6">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-semibold text-gray-900">Replies</h4>
-                    <button
-                      onClick={() => startReply(discussion.id)}
-                      className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                    >
-                      Reply
-                    </button>
-                  </div>
-
-                  {/* Reply Form */}
-                  {replyingTo === discussion.id && (
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <form onSubmit={handleNewReply}>
-                        <textarea
-                          placeholder="Write your reply..."
-                          className="textarea textarea-bordered w-full mb-4 bg-white text-gray-900 placeholder-gray-500"
-                          value={newReply.content}
-                          onChange={(e) => setNewReply({ ...newReply, content: e.target.value })}
-                          required
-                        />
-                        <div className="flex justify-end space-x-2">
-                          <button
-                            type="button"
-                            onClick={cancelReply}
-                            className="btn btn-ghost"
-                          >
-                            Cancel
-                          </button>
-                          <button 
-                            type="submit" 
-                            className="btn btn-primary"
-                            disabled={!newReply.content.trim()}
-                          >
-                            Post Reply
-                          </button>
-                        </div>
-                      </form>
-                    </div>
-                  )}
-
-                  {/* Replies List */}
-                  {replies[discussion.id]?.map((reply) => (
-                    <div key={reply.id} className="pl-4 border-l-2 border-gray-200">
-                      <div className="flex justify-between items-start mb-2">
-                        <p className="text-gray-700">{reply.content}</p>
-                        {currentUser?.uid === reply.authorId && (
-                          <button
-                            onClick={() => handleDeleteReply(discussion.id, reply.id)}
-                            className="text-red-600 hover:text-red-800 p-1 rounded-full hover:bg-red-50 ml-2"
-                            title="Delete reply"
-                          >
-                            <TrashIcon className="h-4 w-4" />
-                          </button>
-                        )}
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <UserLink userId={reply.authorId}>
-                            {reply.author}
-                          </UserLink>
-                          <span className="text-gray-500">•</span>
-                          <span className="text-gray-500 text-sm">
-                            {new Date(reply.timestamp?.toDate?.() || reply.timestamp).toLocaleDateString()}
-                          </span>
-                        </div>
-                        <div className="flex space-x-2">
-                          {reactionTypes.map(({ type }) => {
-                            const reaction = reply.reactions.find(r => r.type === type);
-                            const count = reaction?.users.length || 0;
-                            const isActive = reaction?.users.includes(currentUser?.uid || '') || false;
-                            return (
-                              <ReactionButton
-                                key={type}
-                                type={type}
-                                count={count}
-                                isActive={isActive}
-                                onClick={() => handleReaction(discussion.id, type, reply.id)}
-                              />
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          ))}
+      {/* New Discussion Form */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-8">
+        <div className="p-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Start a Discussion</h2>
+          <form onSubmit={handleNewDiscussion}>
+            <input
+              type="text"
+              placeholder="Title"
+              className="input input-bordered w-full mb-4 bg-gray-50 text-gray-900 placeholder-gray-500"
+              value={newDiscussion.title}
+              onChange={(e) => setNewDiscussion({ ...newDiscussion, title: e.target.value })}
+              required
+            />
+            <textarea
+              placeholder="What's on your mind?"
+              className="textarea textarea-bordered w-full mb-4 bg-gray-50 text-gray-900 placeholder-gray-500"
+              value={newDiscussion.content}
+              onChange={(e) => setNewDiscussion({ ...newDiscussion, content: e.target.value })}
+              required
+            />
+            <button type="submit" className="btn btn-primary">
+              Post Discussion
+            </button>
+          </form>
         </div>
       </div>
-    </DashboardLayout>
+
+      {/* Discussions List */}
+      <div className="space-y-6">
+        {discussions.map((discussion) => (
+          <div key={discussion.id} className="bg-white rounded-lg shadow-sm border border-gray-200">
+            <div className="p-6">
+              <div className="flex justify-between items-start mb-4">
+                <h3 className="text-xl font-semibold text-gray-900">{discussion.title}</h3>
+                {currentUser?.uid === discussion.authorId && (
+                  <button
+                    onClick={() => handleDeleteDiscussion(discussion.id)}
+                    className="text-red-600 hover:text-red-800 p-1 rounded-full hover:bg-red-50"
+                    title="Delete discussion"
+                  >
+                    <TrashIcon className="h-5 w-5" />
+                  </button>
+                )}
+              </div>
+              <p className="text-gray-700 mb-4">{discussion.content}</p>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <UserLink userId={discussion.authorId}>
+                    {discussion.author}
+                  </UserLink>
+                  <span className="text-gray-500">•</span>
+                  <span className="text-gray-500 text-sm">
+                    {new Date(discussion.timestamp?.toDate?.() || discussion.timestamp).toLocaleDateString()}
+                  </span>
+                </div>
+                <div className="flex space-x-2">
+                  {reactionTypes.map(({ type }) => {
+                    const reaction = discussion.reactions.find(r => r.type === type);
+                    const count = reaction?.users.length || 0;
+                    const isActive = reaction?.users.includes(currentUser?.uid || '') || false;
+                    return (
+                      <ReactionButton
+                        key={type}
+                        type={type}
+                        count={count}
+                        isActive={isActive}
+                        onClick={() => handleReaction(discussion.id, type)}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Replies Section */}
+              <div className="space-y-4 mt-6">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-semibold text-gray-900">Replies</h4>
+                  <button
+                    onClick={() => startReply(discussion.id)}
+                    className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                  >
+                    Reply
+                  </button>
+                </div>
+
+                {/* Reply Form */}
+                {replyingTo === discussion.id && (
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <form onSubmit={handleNewReply}>
+                      <textarea
+                        placeholder="Write your reply..."
+                        className="textarea textarea-bordered w-full mb-4 bg-white text-gray-900 placeholder-gray-500"
+                        value={newReply.content}
+                        onChange={(e) => setNewReply({ ...newReply, content: e.target.value })}
+                        required
+                      />
+                      <div className="flex justify-end space-x-2">
+                        <button
+                          type="button"
+                          onClick={cancelReply}
+                          className="btn btn-ghost"
+                        >
+                          Cancel
+                        </button>
+                        <button 
+                          type="submit" 
+                          className="btn btn-primary"
+                          disabled={!newReply.content.trim()}
+                        >
+                          Post Reply
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                )}
+
+                {/* Replies List */}
+                {replies[discussion.id]?.map((reply) => (
+                  <div key={reply.id} className="pl-4 border-l-2 border-gray-200">
+                    <div className="flex justify-between items-start mb-2">
+                      <p className="text-gray-700">{reply.content}</p>
+                      {currentUser?.uid === reply.authorId && (
+                        <button
+                          onClick={() => handleDeleteReply(discussion.id, reply.id)}
+                          className="text-red-600 hover:text-red-800 p-1 rounded-full hover:bg-red-50 ml-2"
+                          title="Delete reply"
+                        >
+                          <TrashIcon className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <UserLink userId={reply.authorId}>
+                          {reply.author}
+                        </UserLink>
+                        <span className="text-gray-500">•</span>
+                        <span className="text-gray-500 text-sm">
+                          {new Date(reply.timestamp?.toDate?.() || reply.timestamp).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <div className="flex space-x-2">
+                        {reactionTypes.map(({ type }) => {
+                          const reaction = reply.reactions.find(r => r.type === type);
+                          const count = reaction?.users.length || 0;
+                          const isActive = reaction?.users.includes(currentUser?.uid || '') || false;
+                          return (
+                            <ReactionButton
+                              key={type}
+                              type={type}
+                              count={count}
+                              isActive={isActive}
+                              onClick={() => handleReaction(discussion.id, type, reply.id)}
+                            />
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 };
 

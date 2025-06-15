@@ -26,7 +26,7 @@ const navigation: NavItem[] = [
   { name: 'Community Hub', path: '/dashboard/community', icon: ChatBubbleLeftRightIcon },
   { name: 'Discussions', path: '/discussions', icon: ChartBarIcon },
   { name: 'Messages', path: '/messages', icon: InboxIcon },
-  { name: 'Resources', path: '/dashboard/resources', icon: BookOpenIcon },
+  { name: 'Resources', path: '/resources', icon: BookOpenIcon },
   { name: 'Profile', path: '/profile', icon: UserCircleIcon },
 ];
 

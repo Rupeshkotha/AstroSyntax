@@ -165,6 +165,12 @@ const LogIn: React.FC = () => {
               </button>
             </div>
           </form>
+          <div className="mt-4 text-center">
+            <span className="text-white/70 text-sm">Are you an admin? </span>
+            <Link to="/admin-login" className="font-medium text-blue-200 hover:text-blue-400 transition-colors underline">
+              Admin Login
+            </Link>
+          </div>
         </div>
       </div>
     </div>

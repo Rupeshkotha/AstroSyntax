@@ -224,6 +224,28 @@ const Messages: React.FC = () => {
         lastMessage: messageData,
       });
 
+      // Get the other user's ID from the chat document
+      const chatDoc = await getDoc(chatRef);
+      if (chatDoc.exists()) {
+        const chatData = chatDoc.data();
+        const otherUserId = chatData.participants.find((id: string) => id !== currentUser.uid);
+        
+        if (otherUserId) {
+          // Create notification for the other user
+          const notificationsRef = collection(db, 'users', otherUserId, 'notifications');
+          await addDoc(notificationsRef, {
+            type: 'NEW_MESSAGE',
+            title: 'New Message',
+            message: `${currentUser.displayName || 'Anonymous'}: ${newMessage}`,
+            timestamp: serverTimestamp(),
+            read: false,
+            link: `/messages?chat=${selectedChat}`,
+            senderId: currentUser.uid,
+            senderName: currentUser.displayName || 'Anonymous'
+          });
+        }
+      }
+
       setNewMessage('');
     } catch (error) {
       console.error('Error sending message:', error);

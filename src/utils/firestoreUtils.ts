@@ -141,6 +141,36 @@ export const getUserProfileData = async (userId: string) => {
   }
 };
 
+// Function to create a notification
+export const createNotification = async (
+  userId: string,
+  type: 'TEAM_INVITATION' | 'TEAM_JOIN_REQUEST' | 'TEAM_JOIN_RESPONSE' | 'TEAM_ANNOUNCEMENT' | 'TEAM_MENTION' | 'NEW_MESSAGE',
+  title: string,
+  message: string,
+  link?: string,
+  teamId?: string,
+  senderId?: string,
+  senderName?: string
+) => {
+  try {
+    const notificationsRef = collection(db, 'users', userId, 'notifications');
+    await addDoc(notificationsRef, {
+      type,
+      title,
+      message,
+      timestamp: serverTimestamp(),
+      read: false,
+      link,
+      teamId,
+      senderId,
+      senderName
+    });
+  } catch (error) {
+    console.error('Error creating notification:', error);
+    throw error;
+  }
+};
+
 // Function to send a chat message
 export const sendTeamMessage = async (
   teamId: string,
@@ -158,6 +188,32 @@ export const sendTeamMessage = async (
       text,
       timestamp: serverTimestamp(),
     });
+
+    // Get team members to notify
+    const teamRef = doc(db, 'teams', teamId);
+    const teamDoc = await getDoc(teamRef);
+    if (teamDoc.exists()) {
+      const teamData = teamDoc.data();
+      const members = teamData.members || [];
+      
+      // Create notifications for all team members except the sender
+      const notificationPromises = members
+        .filter((memberId: string) => memberId !== senderId)
+        .map((memberId: string) => 
+          createNotification(
+            memberId,
+            'NEW_MESSAGE',
+            'New Team Message',
+            `${senderName}: ${text}`,
+            `/teams/${teamId}`,
+            teamId,
+            senderId,
+            senderName
+          )
+        );
+      
+      await Promise.all(notificationPromises);
+    }
   } catch (error) {
     console.error('Error sending message:', error);
     throw error;

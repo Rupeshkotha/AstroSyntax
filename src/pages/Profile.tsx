@@ -795,7 +795,7 @@ const Profile: React.FC = () => {
               {isEditing ? (
                 <div className="space-y-6">
                   {Object.entries(
-                    profileData.technicalSkills.reduce((acc: Record<string, Skill[]>, skill: Skill) => {
+                    (profileData.technicalSkills || []).reduce((acc: Record<string, Skill[]>, skill: Skill) => {
                       if (!acc[skill.category]) acc[skill.category] = [];
                       acc[skill.category].push(skill);
                       return acc;
@@ -861,7 +861,7 @@ const Profile: React.FC = () => {
               ) : (
                 <div className="space-y-6">
                   {Object.entries(
-                    profileData.technicalSkills.reduce((acc: Record<string, Skill[]>, skill: Skill) => {
+                    (profileData.technicalSkills || []).reduce((acc: Record<string, Skill[]>, skill: Skill) => {
                       if (!acc[skill.category]) acc[skill.category] = [];
                       acc[skill.category].push(skill);
                       return acc;
