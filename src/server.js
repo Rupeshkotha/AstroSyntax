@@ -9,7 +9,7 @@ import { fileURLToPath } from 'url';
 dotenv.config();
 
 const app = express();
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 
 const __filename = fileURLToPath(import.meta.url);
