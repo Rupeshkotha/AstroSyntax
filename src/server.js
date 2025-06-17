@@ -3,6 +3,8 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import fetch from 'node-fetch';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 dotenv.config();
 
@@ -10,8 +12,19 @@ const app = express();
 const PORT = 5000;
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 app.use(cors());
 app.use(express.json());
+
+// Serve static files from the React build directory
+app.use(express.static(path.join(__dirname, '..', '..', 'build')));
+
+// All other GET requests not handled by the API should return the React app
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', '..', 'build', 'index.html'));
+});
 
 // ========== POST ROUTE ========== //
 app.post('/api/idea', async (req, res) => {
