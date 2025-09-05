@@ -67,3 +67,5 @@ yarn start
 ```
 
 This will open the application in your browser at `http://localhost:3000` (or another available port).
+
+You can Access this website using here https://astrosyntax.vercel.app/
